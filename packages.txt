@@ -1,0 +1,8 @@
+npm install @heroicons/react
+npm install sweetalert2
+npm install framer-motion
+npm install @headlessui/react
+npm install @tanstack/react-table
+npm install daisyui
+npm install bcrypt
+npm install mysql2
