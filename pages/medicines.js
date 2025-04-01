@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import Sidebar from './components/Sidebar';
-import ProfileImage from './components/ProfileImage';
+import Sidebar from '@/components/Sidebar';
+import ProfileImage from '@/components/ProfileImage';
 import { FaTrash, FaEdit, FaPlus, FaPrint, FaDownload, FaSearch } from "react-icons/fa";
 import { HiOutlineBell } from 'react-icons/hi';
 import Swal from 'sweetalert2';
