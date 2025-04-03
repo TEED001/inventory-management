@@ -6,3 +6,5 @@ npm install @tanstack/react-table
 npm install daisyui
 npm install bcrypt
 npm install mysql2
+npm install lucide-react
+npm install recharts lucide-react
