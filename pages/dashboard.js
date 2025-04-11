@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
-import { Pill, AlertTriangle, Calendar, Activity, Database, Search, Bell, ChevronDown } from "lucide-react"; // Added Database import
-import Sidebar from "@/components/Sidebar";
+import { Pill, AlertTriangle, Calendar, Activity, Database, Search, Bell, ChevronDown } from "lucide-react";
+import Layout from '@/components/Layout';
 
 const Dashboard = () => {
   // Chart Data
@@ -28,7 +28,7 @@ const Dashboard = () => {
     { 
       title: "Total Inventory", 
       value: "5,284", 
-      icon: <Database className="h-5 w-5" />, // Now using the imported Database icon
+      icon: <Database className="h-5 w-5" />,
       change: "+12%",
       trend: "up",
       color: "bg-blue-100 text-blue-600"
@@ -60,182 +60,152 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden">
-      {/* Imported Sidebar */}
-      <Sidebar />
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Dashboard Overview</h2>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search..." 
-                  className="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200">
-                <Bell className="h-5 w-5" />
-              </button>
-              <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">JS</div>
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <div className="p-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className={`p-3 rounded-full ${stat.color}`}>
-                    {stat.icon}
-                  </div>
-                  <span className={`text-sm ${stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                    {stat.change}
-                  </span>
+    <Layout>
+      {/* Dashboard Content */}
+      <div className="p-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {stats.map((stat, index) => (
+            <div key={index} className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className={`p-3 rounded-full ${stat.color}`}>
+                  {stat.icon}
                 </div>
-                <h3 className="text-gray-500 text-sm mt-4">{stat.title}</h3>
-                <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                <span className={`text-sm ${stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                  {stat.change}
+                </span>
               </div>
-            ))}
-          </div>
-
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Main Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 lg:col-span-2">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold">Medicine Usage Trend</h3>
-                <select className="text-sm bg-gray-100 border-0 rounded-md px-3 py-2">
-                  <option>Last 6 Months</option>
-                  <option>Last Year</option>
-                </select>
-              </div>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={usageData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="usage" 
-                      stroke="#3b82f6" 
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: '#3b82f6' }}
-                      activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="predicted" 
-                      stroke="#94a3b8" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <h3 className="text-gray-500 text-sm mt-4">{stat.title}</h3>
+              <p className="text-2xl font-bold mt-1">{stat.value}</p>
             </div>
+          ))}
+        </div>
 
-            {/* Inventory Breakdown */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold">Inventory Breakdown</h3>
-                <select className="text-sm bg-gray-100 border-0 rounded-md px-3 py-2">
-                  <option>By Category</option>
-                </select>
-              </div>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={inventoryData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-                      }}
-                    />
-                    <Bar 
-                      dataKey="value" 
-                      fill="#8884d8" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Main Chart */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 lg:col-span-2">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Medicine Usage Trend</h3>
+              <select className="text-sm bg-gray-100 border-0 rounded-md px-3 py-2">
+                <option>Last 6 Months</option>
+                <option>Last Year</option>
+              </select>
+            </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={usageData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="usage" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: '#3b82f6' }}
+                    activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="predicted" 
+                    stroke="#94a3b8" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Recent Activity */}
+          {/* Inventory Breakdown */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Recent Alerts</h3>
-              <button className="text-sm text-blue-600 hover:text-blue-800">View All</button>
+              <h3 className="text-lg font-semibold">Inventory Breakdown</h3>
+              <select className="text-sm bg-gray-100 border-0 rounded-md px-3 py-2">
+                <option>By Category</option>
+              </select>
             </div>
-            <div className="space-y-4">
-              {[
-                { id: 1, medicine: 'Amoxicillin', type: 'Low Stock', time: '2 hours ago', critical: true },
-                { id: 2, medicine: 'Ibuprofen', type: 'Expiring Soon', time: '5 hours ago', critical: false },
-                { id: 3, medicine: 'Paracetamol', type: 'High Demand', time: '1 day ago', critical: false },
-                { id: 4, medicine: 'Omeprazole', type: 'Low Stock', time: '2 days ago', critical: true },
-              ].map((alert) => (
-                <div key={alert.id} className="flex items-center p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className={`p-3 rounded-full mr-4 ${alert.critical ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
-                    <AlertTriangle className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium">{alert.medicine}</h4>
-                    <p className="text-sm text-gray-500">{alert.type}</p>
-                  </div>
-                  <span className="text-sm text-gray-400">{alert.time}</span>
-                </div>
-              ))}
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={inventoryData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+                    }}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    fill="#8884d8" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
-      </main>
-    </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold">Recent Alerts</h3>
+            <button className="text-sm text-blue-600 hover:text-blue-800">View All</button>
+          </div>
+          <div className="space-y-4">
+            {[
+              { id: 1, medicine: 'Amoxicillin', type: 'Low Stock', time: '2 hours ago', critical: true },
+              { id: 2, medicine: 'Ibuprofen', type: 'Expiring Soon', time: '5 hours ago', critical: false },
+              { id: 3, medicine: 'Paracetamol', type: 'High Demand', time: '1 day ago', critical: false },
+              { id: 4, medicine: 'Omeprazole', type: 'Low Stock', time: '2 days ago', critical: true },
+            ].map((alert) => (
+              <div key={alert.id} className="flex items-center p-4 hover:bg-gray-50 rounded-lg transition-colors">
+                <div className={`p-3 rounded-full mr-4 ${alert.critical ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium">{alert.medicine}</h4>
+                  <p className="text-sm text-gray-500">{alert.type}</p>
+                </div>
+                <span className="text-sm text-gray-400">{alert.time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Layout>
   );
 };
 

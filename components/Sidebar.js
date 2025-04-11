@@ -1,134 +1,138 @@
 "use client";
-import Link from "next/link";
-import { FaPills, FaFileAlt, FaChartBar, FaThLarge, FaBars,FaTimes,FaSignOutAlt } from "react-icons/fa";
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { Home, Users, FileText, Package, Archive, PieChart, Pill, Settings, Menu, X, ChevronDown, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+const Sidebar = ({ isOpen, toggleSidebar }) => {
   const pathname = usePathname();
+  const [expandedItems, setExpandedItems] = useState({});
 
-  // Detect mobile and adjust sidebar state
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) setIsOpen(false); // Auto-close on mobile
-    };
-
-    handleResize(); // Initial check
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen);
+  const toggleItem = (item) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [item]: !prev[item]
+    }));
   };
 
-  const navItems = [
-    { path: "/dashboard", label: "Dashboard", icon: <FaThLarge className="text-lg" /> },
-    { path: "/medicines", label: "Medicines", icon: <FaPills className="text-lg" /> },
-    { path: "/expired-medicines", label: "Expired", icon: <FaFileAlt className="text-lg" /> },
-    { path: "/monthly-reports", label: "Reports", icon: <FaChartBar className="text-lg" /> },
+  const menuItems = [
+    {
+      title: 'Dashboard',
+      icon: <Home size={20} />,
+      path: '/dashboard',
+      subItems: []
+    },
+    {
+      title: 'Medicines',
+      icon: <Pill size={20} />,
+      path: '/medicines',
+      subItems: []
+    },
+    {
+      title: 'Patients',
+      icon: <Users size={20} />,
+      path: '/Testpage',
+      subItems: [
+        { title: 'Patient List', path: '/Testpage' },
+        { title: 'Add Patient', path: '/patients/add' },
+        { title: 'Patient Records', path: '/patients/records' }
+      ]
+    },
+    {
+      title: 'Reports',
+      icon: <PieChart size={20} />,
+      path: '/Testpage',
+      subItems: [
+        { title: 'Inventory Report', path: '/Testpage' },
+        { title: 'Sales Report', path: '/reports/sales' }
+      ]
+    },
+    {
+      title: 'Settings',
+      icon: <Settings size={20} />,
+      path: '/Testpage',
+      subItems: [
+        { title: 'User Management', path: '/Testpage' },
+        { title: 'System Settings', path: '/settings/system' }
+      ]
+    }
   ];
 
   return (
-    <>
-      {/* Mobile Hamburger (Always visible) */}
-      {isMobile && (
-        <button
-          onClick={toggleSidebar}
-          className="fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow-md md:hidden"
-          aria-label="Toggle menu"
-        >
-          {isOpen ? (
-            <FaTimes className="text-gray-700 text-xl" />
-          ) : (
-            <FaBars className="text-gray-700 text-xl" />
-          )}
-        </button>
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`
-          bg-white shadow-lg h-screen p-4 transition-all duration-300 ease-in-out 
-          flex flex-col fixed top-0 left-0 z-40
-          ${isOpen ? "w-64 translate-x-0" : "w-20 -translate-x-full md:translate-x-0"}
-          ${isMobile ? "pt-16" : ""}
-        `}
-        aria-label="Sidebar"
-      >
-        {/* Desktop Toggle (inside sidebar) */}
-        {!isMobile && (
-          <div className="flex justify-between items-center mb-8">
-            {isOpen && (
-              <Image
-                src="/images/logo.png"
-                alt="MOPH Logo"
-                width={144}
-                height={40}
-                priority
-              />
-            )}
-            <button
-              onClick={toggleSidebar}
-              className="p-2 rounded-lg hover:bg-gray-100"
-              aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-            >
-              {isOpen ? (
-                <FaTimes className="text-gray-700 text-xl" />
-              ) : (
-                <FaBars className="text-gray-700 text-xl" />
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <nav className="flex-grow">
-          <ul className="space-y-1">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  href={item.path}
-                  className={`flex items-center p-3 rounded-lg transition-colors ${
-                    pathname === item.path
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <span className="flex-shrink-0">{item.icon}</span>
-                  {isOpen && (
-                    <span className="ml-3 text-sm font-medium">{item.label}</span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Footer */}
+    <nav className={`fixed top-0 left-0 h-full bg-white shadow-lg z-20 transition-all duration-300 ease-in-out 
+      ${isOpen ? 'w-64' : 'w-20'} print:hidden border-r border-gray-200`}>
+      
+      {/* Sidebar Header */}
+      <div className={`flex items-center p-4 border-b border-gray-200 ${isOpen ? 'justify-between' : 'justify-center'}`}>
         {isOpen && (
-          <div className="mt-auto pt-4 border-t border-gray-200">
-            <button className="flex items-center w-full p-3 text-gray-700 hover:bg-gray-100 rounded-lg">
-              <FaSignOutAlt className="text-lg" />
-              <span className="ml-3 text-sm font-medium">Logout</span>
-            </button>
+          <div className="flex-1 flex justify-center">
+            <Image 
+              src="/images/logo.png"
+              alt="System Logo" 
+              width={120}
+              height={40} 
+              className="h-10 w-auto"
+            />
           </div>
         )}
-      </aside>
-
-      {/* Mobile Overlay */}
-      {isOpen && isMobile && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+        <button 
           onClick={toggleSidebar}
-        />
-      )}
-    </>
+          className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+          aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      {/* Menu Items */}
+      <div className="overflow-y-auto h-[calc(100%-60px)]">
+        <nav className="mt-4">
+          {menuItems.map((item) => (
+            <div key={item.title} className="mb-1">
+              <Link href={item.path} passHref legacyBehavior>
+                <div 
+                  className={`flex items-center justify-between p-3 mx-2 rounded-lg cursor-pointer transition-colors
+                    ${pathname === item.path ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-700'}
+                    ${!isOpen ? 'justify-center' : ''}`}
+                  onClick={(e) => {
+                    if (item.subItems.length > 0) {
+                      e.preventDefault();
+                      toggleItem(item.title);
+                    }
+                  }}
+                >
+                  <div className="flex items-center">
+                    <span className={`${pathname === item.path ? 'text-white' : 'text-gray-600'}`}>
+                      {item.icon}
+                    </span>
+                    {isOpen && <span className="ml-3">{item.title}</span>}
+                  </div>
+                  {isOpen && item.subItems.length > 0 && (
+                    expandedItems[item.title] ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+                  )}
+                </div>
+              </Link>
+
+              {isOpen && item.subItems.length > 0 && expandedItems[item.title] && (
+                <div className="ml-10 mt-1">
+                  {item.subItems.map((subItem) => (
+                    <Link href={subItem.path} key={subItem.title} passHref legacyBehavior>
+                      <div 
+                        className={`p-2 pl-4 rounded-lg cursor-pointer text-sm transition-colors
+                          ${pathname === subItem.path ? 'bg-blue-100 text-blue-600 font-medium' : 'hover:bg-gray-100 text-gray-600'}`}
+                      >
+                        {subItem.title}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
+      </div>
+    </nav>
   );
 };
 

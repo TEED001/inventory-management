@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import Sidebar from '@/components/Sidebar';
+import Layout from '@/components/Layout';
 import ProfileImage from '@/components/ProfileImage';
 import { FaTrash, FaEdit, FaPlus, FaPrint, FaDownload, FaSearch } from "react-icons/fa";
 import { HiOutlineBell } from 'react-icons/hi';
@@ -8,7 +8,6 @@ import Swal from 'sweetalert2';
 
 
 const Medicines = () => {
-  const [isOpen, setIsOpen] = useState(true);
   const [medicines, setMedicines] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -303,19 +302,7 @@ const saveEditedMedicine = async () => {
 
 
   return (
-    
-<div className="flex h-screen bg-gray-50 text-gray-800 print:block">
-  <Sidebar isOpen={isOpen} className="print:hidden" /> {/* Hide Sidebar on Print */}
-  <main className="flex-1 p-8 print:p-0 print:w-full" style={{ marginLeft: isOpen ? '256px' : '80px' }}>
-    {/* Top Section - Hidden in Print */}
-    <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-md mb-8 print:hidden">
-      <h1 className="text-2xl font-semibold">Medicines</h1>
-      <div className="flex items-center space-x-6">
-        <HiOutlineBell className="text-2xl text-gray-600 cursor-pointer hover:text-gray-800 transition" />
-        <ProfileImage name="Milo Galendez" imageUrl="" />
-      </div>
-    </div>
-
+    <Layout>
     {/* Buttons & Search Bar - Hidden in Print */}
     <div className="flex justify-between items-center bg-gradient-to-r from-teal-500 to-blue-600 p-5 rounded-xl shadow-lg print:hidden">
       {/* Buttons Container */}
@@ -469,7 +456,6 @@ const saveEditedMedicine = async () => {
 
       </table>
     </div>
-  </main>
 
 {/* Add Medicine Modal */}
 {isModalOpen && (
@@ -591,12 +577,7 @@ const saveEditedMedicine = async () => {
     </div>
   </div>
 )}
-
-
-
-
-
-    </div>
+    </Layout>
   );
 };
 
