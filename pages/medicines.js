@@ -87,9 +87,31 @@ const Medicines = () => {
     if (!newMedicine.expiry_date) newErrors.expiry_date = 'Expiry date is required';
     if (!newMedicine.physical_balance) newErrors.physical_balance = 'Physical balance is required';
 
+    // Add expiry date validation
+    if (newMedicine.expiry_date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expiryDate = new Date(newMedicine.expiry_date);
+        
+        if (expiryDate < today) {
+            newErrors.expiry_date = 'Expiry date cannot be in the past';
+        }
+    }
+
     if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+        setErrors(newErrors);
+        return;
+    }
+
+    if (isDuplicate) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Duplicate Entry',
+            text: 'This medicine record already exists!',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        return;
     }
 
     if (isDuplicate) {
@@ -459,123 +481,177 @@ const saveEditedMedicine = async () => {
 
 {/* Add Medicine Modal */}
 {isModalOpen && (
-  <div 
-    className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-md transition-opacity"
-    onClick={() => {
-      setIsModalOpen(false);
-      setErrors({}); // Reset errors when closing
-    }}
-  >
+  <>
+    {/* Blur overlay that covers entire screen including sidebar */}
     <div 
-      className="relative bg-white p-8 rounded-2xl shadow-2xl w-[420px] border border-gray-200 
+      className="fixed inset-0 bg-black/30 backdrop-blur-md z-40 transition-opacity"
+      onClick={() => {
+        setIsModalOpen(false);
+        setErrors({});
+      }}
+    />
+    
+    {/* Modal container */}
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div 
+        className="relative bg-white p-8 rounded-2xl shadow-2xl w-[420px] border border-gray-200 
                   animate-fadeIn scale-95 transition-transform duration-300"
-      onClick={(e) => e.stopPropagation()} // Prevent click inside from closing modal
-    >
-      {/* Modal Title */}
-      <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Add Medicine</h2>
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Add Medicine</h2>
 
-      {/* Input Fields for New Medicine */}
-      <div className="space-y-4">
-        {Object.keys(newMedicine).map((field) => (
-          <div key={field} className="relative">
-            <input
-              type={field === "expiry_date" ? "date" : field === "physical_balance" ? "number" : "text"}
-              name={field}
-              value={newMedicine[field]}
-              onChange={handleInputChange}
-              className={`w-full px-4 py-3 border rounded-lg bg-gray-100 shadow-sm text-gray-900 
-                         focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-500 
-                         ${errors[field] ? "border-red-500" : "border-gray-300"}`}
-              placeholder={field.replace("_", " ").toUpperCase()}
-            />
-            {errors[field] && <p className="text-red-500 text-xs mt-1">{errors[field]}</p>}
-          </div>
-        ))}
-        {isDuplicate && <p className="text-red-500 text-xs">This medicine already exists!</p>}
-      </div>
+        <div className="space-y-4">
+          {Object.keys(newMedicine).map((field) => (
+            <div key={field} className="relative">
+              <input
+                type={field === "expiry_date" ? "date" : field === "physical_balance" ? "number" : "text"}
+                name={field}
+                value={newMedicine[field]}
+                onChange={(e) => {
+                  handleInputChange(e);
+                  if (field === "expiry_date") {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const selectedDate = new Date(e.target.value);
+                    
+                    if (selectedDate < today) {
+                      setErrors(prev => ({
+                        ...prev,
+                        expiry_date: 'Expiry date cannot be in the past'
+                      }));
+                    } else if (errors.expiry_date === 'Expiry date cannot be in the past') {
+                      setErrors(prev => {
+                        const { expiry_date: _, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }
+                }}
+                min={field === "expiry_date" ? new Date().toISOString().split('T')[0] : undefined}
+                className={`w-full px-4 py-3 border rounded-lg bg-gray-100 shadow-sm text-gray-900 
+                           focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-500 
+                           ${errors[field] ? "border-red-500" : "border-gray-300"}`}
+                placeholder={field.replace("_", " ").toUpperCase()}
+              />
+              {errors[field] && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors[field]}
+                </p>
+              )}
+            </div>
+          ))}
+          {isDuplicate && <p className="text-red-500 text-xs">This medicine already exists!</p>}
+        </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between mt-6">
-        <button 
-          onClick={() => {
-            setIsModalOpen(false);
-            setErrors({}); // Reset errors when closing
-          }}
-          className="px-5 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400 transition-all"
-        >
-          Cancel
-        </button>
-        <button 
-          onClick={addMedicine}
-          className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all 
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isDuplicate || isSaving}
-        >
-          {isSaving ? "Saving..." : "Save"}
-        </button>
+        <div className="flex justify-between mt-6">
+          <button 
+            onClick={() => {
+              setIsModalOpen(false);
+              setErrors({});
+            }}
+            className="px-5 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400 transition-all"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={addMedicine}
+            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all 
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isDuplicate || isSaving || Object.keys(errors).length > 0}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </>
 )}
 
 {/* Edit Medicine Modal */}
 {isEditModalOpen && (
-  <div 
-    className="fixed inset-0 flex items-center justify-center bg-black/30 backdrop-blur-md transition-opacity"
-    onClick={() => {
-      setIsEditModalOpen(false);
-      setEditErrors({}); // Reset errors when closing
-    }}
-  >
+  <>
+    {/* Blur overlay that covers entire screen including sidebar */}
     <div 
-      className="relative bg-white p-8 rounded-2xl shadow-2xl w-[420px] border border-gray-200 
+      className="fixed inset-0 bg-black/30 backdrop-blur-md z-40 transition-opacity"
+      onClick={() => {
+        setIsEditModalOpen(false);
+        setEditErrors({});
+      }}
+    />
+    
+    {/* Modal container */}
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div 
+        className="relative bg-white p-8 rounded-2xl shadow-2xl w-[420px] border border-gray-200 
                   animate-fadeIn scale-95 transition-transform duration-300"
-      onClick={(e) => e.stopPropagation()} // Prevent click inside from closing modal
-    >
-      {/* Modal Title */}
-      <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Edit Medicine</h2>
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Edit Medicine</h2>
 
-      {/* Input Fields for Editing */}
-      <div className="space-y-4">
-        {Object.keys(editMedicine).map((field) => (
-          <div key={field} className="relative">
-            <input
-              type={field === "expiry_date" ? "date" : field === "physical_balance" ? "number" : "text"}
-              name={field}
-              value={editMedicine[field]}
-              onChange={handleEditInputChange}
-              className={`w-full px-4 py-3 border rounded-lg bg-gray-100 shadow-sm text-gray-900 
-                         focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-500 
-                         ${editErrors[field] ? "border-red-500" : "border-gray-300"}`}
-              placeholder={field.replace("_", " ").toUpperCase()}
-            />
-            {editErrors[field] && <p className="text-red-500 text-xs mt-1">{editErrors[field]}</p>}
-          </div>
-        ))}
-      </div>
+        <div className="space-y-4">
+          {Object.keys(editMedicine).map((field) => (
+            <div key={field} className="relative">
+              <input
+                type={field === "expiry_date" ? "date" : field === "physical_balance" ? "number" : "text"}
+                name={field}
+                value={editMedicine[field]}
+                onChange={(e) => {
+                  handleEditInputChange(e);
+                  if (field === "expiry_date") {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const selectedDate = new Date(e.target.value);
+                    
+                    if (selectedDate < today) {
+                      setEditErrors(prev => ({
+                        ...prev,
+                        expiry_date: 'Expiry date cannot be in the past'
+                      }));
+                    } else if (editErrors.expiry_date === 'Expiry date cannot be in the past') {
+                      setEditErrors(prev => {
+                        const { expiry_date: _, ...rest } = prev;
+                        return rest;
+                      });
+                    }
+                  }
+                }}
+                min={field === "expiry_date" ? new Date().toISOString().split('T')[0] : undefined}
+                className={`w-full px-4 py-3 border rounded-lg bg-gray-100 shadow-sm text-gray-900 
+                           focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-500 
+                           ${editErrors[field] ? "border-red-500" : "border-gray-300"}`}
+                placeholder={field.replace("_", " ").toUpperCase()}
+              />
+              {editErrors[field] && (
+                <p className="text-red-500 text-xs mt-1">
+                  {editErrors[field]}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between mt-6">
-        <button 
-          onClick={() => {
-            setIsEditModalOpen(false);
-            setEditErrors({}); // Reset errors when closing
-          }}
-          className="px-5 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400 transition-all"
-        >
-          Cancel
-        </button>
-        <button 
-          onClick={saveEditedMedicine}
-          className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all 
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isSaving}
-        >
-          {isSaving ? "Saving..." : "Save"}
-        </button>
+        <div className="flex justify-between mt-6">
+          <button 
+            onClick={() => {
+              setIsEditModalOpen(false);
+              setEditErrors({});
+            }}
+            className="px-5 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400 transition-all"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={saveEditedMedicine}
+            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all 
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSaving || Object.keys(editErrors).length > 0}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </>
 )}
     </Layout>
   );
