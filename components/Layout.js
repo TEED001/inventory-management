@@ -33,13 +33,13 @@ const Layout = ({ children }) => {
       case 'dashboard':
         return 'Dashboard';
       case 'medicines':
-        return 'Medicines';
+        return '';
       case 'expired-medicines':
-        return 'Expired-Medicines';
+        return '';
       case 'archive':
-        return 'Archive';
+        return '';
       case 'settings':
-        return 'Settings';
+        return '';
       default:
         return 'Dashboard'; // Default fallback
     }

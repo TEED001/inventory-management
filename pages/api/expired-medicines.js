@@ -220,7 +220,7 @@ async function handlePostExpired(connection, req, res) {
 
 // PUT - Archive/Unarchive an expired medicine (updated with validation)
 async function handlePutExpired(connection, req, res) {
-    const { id, archive = true, archived_by = null } = req.body;
+    const { id, drug_description, brand_name, lot_batch_no, expiry_date, physical_balance, reason } = req.body;
     
     if (!id) {
         await connection.rollback();
@@ -238,65 +238,39 @@ async function handlePutExpired(connection, req, res) {
         return res.status(404).json({ error: 'Expired medicine not found' });
     }
 
-
-    // Check if medicine should be restored instead of archived
-    if (new Date(expired[0].expiry_date) > new Date()) {
-        await connection.rollback();
-        return res.status(400).json({ 
-            error: 'Cannot archive medicine',
-            details: 'Medicine expiry date is in the future - it should be restored instead'
-        });
-    }
-
-    if (expired[0].is_archived === (archive ? 1 : 0)) {
-        await connection.rollback();
-        return res.status(200).json({ 
-            message: `Medicine already ${archive ? 'archived' : 'unarchived'}`,
-            is_archived: archive
-        });
-    }
-
-    // Update archive status
+    // Update medicine details
     await connection.query(
         `UPDATE expired_medicines 
-        SET is_archived = ?, archived_at = ?, archived_by = ?
+        SET drug_description = ?, 
+            brand_name = ?, 
+            lot_batch_no = ?, 
+            expiry_date = ?, 
+            physical_balance = ?,
+            reason = ?
         WHERE id = ?`,
         [
-            archive ? 1 : 0,
-            archive ? new Date() : null,
-            archive ? archived_by : null,
+            drug_description,
+            brand_name,
+            lot_batch_no,
+            expiry_date,
+            physical_balance,
+            reason,
             id
         ]
     );
 
-    // If archiving, also create a record in archived_medicines
-    if (archive) {
-        await connection.query(
-            `INSERT INTO archived_medicines 
-            (original_item_no, drug_description, brand_name, 
-             lot_batch_no, expiry_date, physical_balance, 
-             reason, type, archived_at, archived_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                expired[0].original_item_no,
-                expired[0].drug_description,
-                expired[0].brand_name,
-                expired[0].lot_batch_no,
-                expired[0].expiry_date,
-                expired[0].physical_balance,
-                expired[0].reason || 'Expired',
-                'expired',
-                new Date(),
-                archived_by
-            ]
-        );
-    }
-
     await connection.commit();
     return res.status(200).json({ 
-        message: archive ? 'Medicine archived' : 'Medicine unarchived',
-        is_archived: archive,
-        archived_at: archive ? new Date().toISOString() : null
+        message: 'Medicine updated successfully',
+        data: {
+            id,
+            drug_description,
+            brand_name,
+            lot_batch_no,
+            expiry_date,
+            physical_balance,
+            reason
+        }
     });
 }
 
