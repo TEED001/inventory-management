@@ -51,7 +51,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       subItems: [
         { title: 'Medicine', path: '/medicines', icon: <Pill className="w-4 h-4" /> },
         { title: 'Expired Medicine', path: '/expired-medicines', icon: <Archive className="w-4 h-4" /> },
-        { title: 'Archive', path: '/medicine-management/archive', icon: <Box className="w-4 h-4" /> }
+        { title: 'Archive', path: '/archive', icon: <Box className="w-4 h-4" /> }
       ]
     },
     {

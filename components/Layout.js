@@ -34,10 +34,10 @@ const Layout = ({ children }) => {
         return 'Dashboard';
       case 'medicines':
         return 'Medicines';
-      case 'patients':
-        return 'Patients';
-      case 'reports':
-        return 'Reports';
+      case 'expired-medicines':
+        return 'Expired-Medicines';
+      case 'archive':
+        return 'Archive';
       case 'settings':
         return 'Settings';
       default:

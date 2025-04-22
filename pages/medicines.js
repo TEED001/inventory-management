@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/Layout';
-import ProfileImage from '@/components/ProfileImage';
-import { FaTrash, FaEdit, FaPlus, FaPrint, FaDownload, FaSearch } from "react-icons/fa";
-import { HiOutlineBell } from 'react-icons/hi';
+import { FaTrash, FaEdit, FaPlus, FaPrint, FaDownload, FaSearch, FaHistory, FaQrcode } from "react-icons/fa";
 import Swal from 'sweetalert2';
 
-
-
 const Medicines = () => {
+  // State management
   const [medicines, setMedicines] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [newlyAdded, setNewlyAdded] = useState(new Set());
+  
+  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
+  // Form states
   const [newMedicine, setNewMedicine] = useState({
     drug_description: '',
     brand_name: '',
@@ -18,641 +22,663 @@ const Medicines = () => {
     expiry_date: '',
     physical_balance: ''
   });
-
-
+  
+  const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [editMedicine, setEditMedicine] = useState({
+    drug_description: '',
+    brand_name: '',
+    lot_batch_no: '',
+    expiry_date: '',
+    physical_balance: ''
+  });
+  
+  // Error states
   const [errors, setErrors] = useState({});
-  const [newlyAdded, setNewlyAdded] = useState(new Set());
-  const [isDuplicate, setIsDuplicate] = useState(false);
-  const modalRef = useRef(null);
+  const [editErrors, setEditErrors] = useState({});
+  
+  // Loading states
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-
-  const fetchData = async () => {
+  // Fetch medicines with error handling
+  const fetchMedicines = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch("/api/medicines");
-      if (!response.ok) {
-        throw new Error("Failed to fetch medicines");
-      }
+      const response = await fetch(`/api/medicines?search=${searchQuery}`);
+      if (!response.ok) throw new Error('Failed to fetch medicines');
+      
       const data = await response.json();
-      setMedicines(data);
+      setMedicines(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error fetching medicines:", error);
+      console.error('Error fetching medicines:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to load medicines',
+        icon: 'error',
+        confirmButtonColor: '#3b82f6',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (searchQuery.trim() === "") {
-      fetchData(); // Fetch all data when search is empty
-    } else {
-      handleSearch(searchQuery);
-    }
+    fetchMedicines();
   }, [searchQuery]);
 
-  // Search function
-  const handleSearch = async (query) => {
-    try {
-      const response = await fetch(`/api/medicines?search=${query}`);
-      if (!response.ok) {
-        throw new Error("Failed to search medicines");
-      }
-      const data = await response.json();
-      setMedicines(data);
-    } catch (error) {
-      console.error("Error searching medicines:", error);
-    }
-  };
-  
-
+  // Handle input changes with validation
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const updatedMedicine = { ...newMedicine, [name]: value };
-    setNewMedicine(updatedMedicine);
-    setErrors({ ...errors, [name]: '' });
-
-    // Check for duplicate
-    const duplicate = medicines.some((med) =>
-      med.drug_description.toLowerCase() === updatedMedicine.drug_description.toLowerCase() &&
-      med.brand_name.toLowerCase() === updatedMedicine.brand_name.toLowerCase() &&
-      med.lot_batch_no.toLowerCase() === updatedMedicine.lot_batch_no.toLowerCase() &&
-      med.expiry_date === updatedMedicine.expiry_date
-    );
-
-    setIsDuplicate(duplicate);
+    setNewMedicine(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when typing
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  const addMedicine = async () => {
-    let newErrors = {};
-    if (!newMedicine.drug_description) newErrors.drug_description = 'Drug description is required';
-    if (!newMedicine.brand_name) newErrors.brand_name = 'Brand name is required';
-    if (!newMedicine.lot_batch_no) newErrors.lot_batch_no = 'Lot/Batch number is required';
-    if (!newMedicine.expiry_date) newErrors.expiry_date = 'Expiry date is required';
-    if (!newMedicine.physical_balance) newErrors.physical_balance = 'Physical balance is required';
-
-    // Add expiry date validation
-    if (newMedicine.expiry_date) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const expiryDate = new Date(newMedicine.expiry_date);
-        
-        if (expiryDate < today) {
-            newErrors.expiry_date = 'Expiry date cannot be in the past';
-        }
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
-    }
-
-    if (isDuplicate) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Duplicate Entry',
-            text: 'This medicine record already exists!',
-            timer: 2000,
-            showConfirmButton: false
-        });
-        return;
-    }
-
-    if (isDuplicate) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Duplicate Entry',
-        text: 'This medicine record already exists!',
-        timer: 2000,
-        showConfirmButton: false
+  // Handle edit input changes with validation
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditMedicine(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when typing
+    if (editErrors[name]) {
+      setEditErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[name];
+        return newErrors;
       });
-      return;
     }
+  };
 
+  // Validate medicine form
+  const validateForm = (medicine, isEdit = false) => {
+    const newErrors = {};
+    
+    if (!medicine.drug_description.trim()) {
+      newErrors.drug_description = 'Drug description is required';
+    }
+    
+    if (!medicine.brand_name.trim()) {
+      newErrors.brand_name = 'Brand name is required';
+    }
+    
+    if (!medicine.lot_batch_no.trim()) {
+      newErrors.lot_batch_no = 'Batch number is required';
+    }
+    
+    if (!medicine.expiry_date) {
+      newErrors.expiry_date = 'Expiry date is required';
+    } else if (new Date(medicine.expiry_date) < new Date()) {
+      newErrors.expiry_date = 'Expiry date cannot be in the past';
+    }
+    
+    if (medicine.physical_balance === '' || isNaN(medicine.physical_balance)) {
+      newErrors.physical_balance = 'Valid quantity is required';
+    } else if (medicine.physical_balance < 0) {
+      newErrors.physical_balance = 'Quantity cannot be negative';
+    }
+    
+    if (isEdit) {
+      setEditErrors(newErrors);
+    } else {
+      setErrors(newErrors);
+    }
+    
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Add new medicine
+  const addMedicine = async () => {
+    if (!validateForm(newMedicine)) return;
+    
     try {
-      const res = await fetch('/api/medicines', {
+      setIsSaving(true);
+      const response = await fetch('/api/medicines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMedicine),
+        body: JSON.stringify(newMedicine)
       });
-
-      if (res.ok) {
-        const addedMed = await res.json();
-        const updatedMedicines = [...medicines, addedMed].sort((a, b) => a.drug_description.localeCompare(b.drug_description));
-
-        setMedicines(updatedMedicines);
-        setNewlyAdded((prev) => new Set([...prev, addedMed.item_no]));
-
-        setIsModalOpen(false);
-        setNewMedicine({ drug_description: '', brand_name: '', lot_batch_no: '', expiry_date: '', physical_balance: '' });
-        setErrors({});
-        setIsDuplicate(false);
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Success!',
-          text: 'Medicine added successfully!',
-          timer: 2000,
-          showConfirmButton: false
-        });
-      } else {
-        console.error('Error adding medicine:', await res.text());
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 409) {
+          // Duplicate medicine error
+          Swal.fire({
+            title: 'Duplicate Medicine',
+            text: errorData.error || 'This medicine already exists',
+            icon: 'warning',
+            confirmButtonColor: '#3b82f6',
+          });
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to add medicine');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops!',
-        text: 'Something went wrong. Try again later.',
+      
+      const addedMedicine = await response.json();
+      
+      setMedicines(prev => [...prev, addedMedicine].sort((a, b) => 
+        a.drug_description.localeCompare(b.drug_description)
+      ));
+      
+      setNewlyAdded(prev => new Set([...prev, addedMedicine.item_no]));
+      setIsModalOpen(false);
+      setNewMedicine({
+        drug_description: '',
+        brand_name: '',
+        lot_batch_no: '',
+        expiry_date: '',
+        physical_balance: ''
       });
+      
+      Swal.fire({
+        title: 'Success',
+        text: 'Medicine added successfully',
+        icon: 'success',
+        confirmButtonColor: '#3b82f6',
+      });
+    } catch (error) {
+      console.error('Error adding medicine:', error);
+      Swal.fire({
+        title: 'Error',
+        text: error.message || 'Failed to add medicine',
+        icon: 'error',
+        confirmButtonColor: '#3b82f6',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const deleteMedicine = async (itemNo) => {
-  const confirmDelete = await Swal.fire({
-    title: "Are you sure?",
-    text: "This action cannot be undone!",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#3085d6",
-    confirmButtonText: "Yes, delete it!",
-  });
+  // Open edit modal
+  const openEditModal = (medicine) => {
+    setSelectedMedicine(medicine);
+    setEditMedicine({
+      drug_description: medicine.drug_description,
+      brand_name: medicine.brand_name,
+      lot_batch_no: medicine.lot_batch_no,
+      expiry_date: medicine.expiry_date.split('T')[0],
+      physical_balance: medicine.physical_balance
+    });
+    setIsEditModalOpen(true);
+  };
 
-  if (confirmDelete.isConfirmed) {
+  // Save edited medicine
+  const saveEditedMedicine = async () => {
+    if (!validateForm(editMedicine, true)) return;
+    
     try {
-      const res = await fetch(`/api/medicines?item_no=${itemNo}`, {
-        method: "DELETE",
+      setIsSaving(true);
+      const response = await fetch('/api/medicines', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...editMedicine,
+          item_no: selectedMedicine.item_no
+        })
       });
-
-      if (res.ok) {
-        setMedicines(medicines.filter((med) => med.item_no !== itemNo));
-
-        Swal.fire({
-          icon: "success",
-          title: "Deleted!",
-          text: "The medicine has been removed.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      } else {
-        throw new Error("Failed to delete medicine");
-      }
-    } catch (error) {
+      
+      if (!response.ok) throw new Error('Failed to update medicine');
+      
+      setMedicines(prev => 
+        prev.map(med => 
+          med.item_no === selectedMedicine.item_no ? 
+          { ...med, ...editMedicine } : med
+        )
+      );
+      
+      setIsEditModalOpen(false);
       Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to delete medicine. Try again later.",
+        title: 'Success',
+        text: 'Medicine updated successfully',
+        icon: 'success',
+        confirmButtonColor: '#3b82f6',
       });
+    } catch (error) {
+      console.error('Error updating medicine:', error);
+      Swal.fire({
+        title: 'Error',
+        text: error.message || 'Failed to update medicine',
+        icon: 'error',
+        confirmButtonColor: '#3b82f6',
+      });
+    } finally {
+      setIsSaving(false);
     }
-  }
-};
+  };
 
-
-const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-const [selectedMedicine, setSelectedMedicine] = useState(null);
-const [editMedicine, setEditMedicine] = useState({
-  drug_description: '',
-  brand_name: '',
-  lot_batch_no: '',
-  expiry_date: '',
-  physical_balance: '',
-});
-const [editErrors, setEditErrors] = useState({});
-const [isSaving, setIsSaving] = useState(false); // Loading state
-
-// Open Edit Modal (Excludes Item No)
-const openEditModal = (medicine) => {
-  setSelectedMedicine(medicine);
-  const { item_no, ...editableFields } = medicine; // Exclude item_no
-  setEditMedicine(editableFields);
-  setEditErrors({}); // Clear previous errors
-  setIsEditModalOpen(true);
-};
-
-// Handle Input Changes
-const handleEditInputChange = (e) => {
-  const { name, value } = e.target;
-  setEditMedicine({ ...editMedicine, [name]: value });
-
-  // Live Validation
-  if (!value.trim()) {
-    setEditErrors((prev) => ({ ...prev, [name]: "This field is required." }));
-  } else {
-    setEditErrors((prev) => {
-      const { [name]: _, ...rest } = prev;
-      return rest;
+  // Archive medicine
+  const archiveMedicine = async (itemNo) => {
+    const result = await Swal.fire({
+      title: 'Archive Medicine?',
+      text: 'This will move the medicine to the archive',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, archive it!',
+      backdrop: `
+        rgba(0,0,0,0.5)
+        url("/images/nyan-cat.gif")
+        left top
+        no-repeat
+      `
     });
-  }
-};
+    
+    if (result.isConfirmed) {
+      try {
+        setIsDeleting(true);
+        const response = await fetch('/api/archive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            id: itemNo, 
+            type: 'active',
+            reason: 'Manually archived'
+          })
+        });
+        
+        if (!response.ok) throw new Error('Failed to archive medicine');
+        
+        setMedicines(prev => prev.filter(med => med.item_no !== itemNo));
+        Swal.fire({
+          title: 'Archived!',
+          text: 'Medicine moved to archive',
+          icon: 'success',
+          confirmButtonColor: '#3b82f6',
+        });
+      } catch (error) {
+        console.error('Error archiving medicine:', error);
+        Swal.fire({
+          title: 'Error',
+          text: error.message || 'Failed to archive medicine',
+          icon: 'error',
+          confirmButtonColor: '#3b82f6',
+        });
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
 
-// Validate Input Fields
-const validateEditFields = () => {
-  let errors = {};
-  if (!editMedicine.drug_description.trim()) errors.drug_description = "Drug description is required.";
-  if (!editMedicine.brand_name.trim()) errors.brand_name = "Brand name is required.";
-  if (!editMedicine.lot_batch_no.trim()) errors.lot_batch_no = "Lot/Batch number is required.";
-  if (!editMedicine.expiry_date) errors.expiry_date = "Expiry date is required.";
-  if (editMedicine.physical_balance === '' || editMedicine.physical_balance < 0)
-    errors.physical_balance = "Physical balance must be a valid number.";
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = ['Item No', 'Drug Description', 'Brand Name', 'Batch No', 'Expiry Date', 'Quantity'];
+    const csvContent = [
+      headers.join(','),
+      ...medicines.map(med => [
+        med.item_no,
+        `"${med.drug_description.replace(/"/g, '""')}"`,
+        `"${med.brand_name.replace(/"/g, '""')}"`,
+        med.lot_batch_no,
+        med.expiry_date.split('T')[0],
+        med.physical_balance
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `medicines_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  setEditErrors(errors);
-  return Object.keys(errors).length === 0;
-};
-
-// Save Edited Medicine to DB
-const saveEditedMedicine = async () => {
-  if (!validateEditFields()) return; // Stop execution if validation fails
-
-  // Check if any field has changed (trim strings & convert numbers)
-  const isUnchanged = Object.keys(editMedicine).every((key) => {
-    const newValue =
-      key === "physical_balance"
-        ? Number(editMedicine[key])
-        : String(editMedicine[key]).trim();
-    const oldValue =
-      key === "physical_balance"
-        ? Number(selectedMedicine[key])
-        : String(selectedMedicine[key]).trim();
-    return newValue === oldValue;
-  });
-
-  if (isUnchanged) {
-    Swal.fire({
-      icon: "success",
-      title: "Saved Successfully",
-      text: "No changes were made.",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    setIsEditModalOpen(false);
-    return;
-  }
-
-  try {
-    setIsSaving(true); // Show loading state
-
-    const response = await fetch('/api/medicines', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...editMedicine, item_no: selectedMedicine.item_no }), // Keep item_no for API
-    });
-
-    if (!response.ok) throw new Error("Failed to update medicine");
-
-    setMedicines((prev) =>
-      prev.map((med) => (med.item_no === selectedMedicine.item_no ? { ...med, ...editMedicine } : med))
-    );
-
-    // Show success notification
-    Swal.fire({
-      icon: "success",
-      title: "Updated Successfully",
-      text: "Medicine details have been updated!",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-
-    setIsEditModalOpen(false); // Close modal
-  } catch (error) {
-    console.error("Error updating medicine:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Update Failed",
-      text: "Something went wrong. Please try again.",
-    });
-  } finally {
-    setIsSaving(false); // Hide loading state
-  }
-};
-
+  // Low stock threshold
+  const LOW_STOCK_THRESHOLD = 1000;
 
   return (
     <Layout>
-    {/* Buttons & Search Bar - Hidden in Print */}
-    <div className="flex justify-between items-center bg-gradient-to-r from-teal-500 to-blue-600 p-5 rounded-xl shadow-lg print:hidden">
-      {/* Buttons Container */}
-      <div className="flex space-x-4">
-        {[
-          { icon: <FaPlus />, text: "Add", action: () => setIsModalOpen(true) },
-          {
-            icon: <FaPrint />,
-            text: "Print",
-            action: () => window.print(), // Print Function
-          },
-          {
-            icon: <FaDownload />,
-            text: "Download",
-            action: () => {
-              const csvContent = `data:text/csv;charset=utf-8,${[
-                ["Item No", "Drug Description", "Brand Name", "Lot/Batch No", "Expiry Date", "Physical Balance"],
-                ...medicines.map((med) => [
-                  med.item_no,
-                  med.drug_description,
-                  med.brand_name,
-                  med.lot_batch_no,
-                  med.expiry_date,
-                  med.physical_balance,
-                ]),
-              ]
-                .map((e) => e.join(","))
-                .join("\n")}`;
-              const encodedUri = encodeURI(csvContent);
-              const link = document.createElement("a");
-              link.setAttribute("href", encodedUri);
-              link.setAttribute("download", "medicines.csv");
-              document.body.appendChild(link);
-              link.click();
-            },
-          },
-        ].map(({ icon, text, action }, index) => (
-          <button
-            key={index}
-            onClick={action}
-            className="flex items-center space-x-2 px-6 py-3 bg-white text-gray-900 rounded-lg shadow-md hover:bg-gray-100 transition-all transform hover:scale-105"
-          >
-            <span className="text-teal-600 text-xl">{icon}</span>
-            <span className="font-semibold">{text} Medicine</span>
-          </button>
-        ))}
+      {/* Header with actions */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 p-4 bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg shadow">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Medicine Inventory</h1>
+          <p className="text-sm text-white/90 mt-1">
+            {medicines.length} {medicines.length === 1 ? 'item' : 'items'} in inventory
+          </p>
+        </div>
+        
+        <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+          {/* Search */}
+          <div className="relative flex-grow">
+            <FaSearch className="absolute left-3 top-3 text-white/80" />
+            <input
+              type="text"
+              placeholder="Search medicines..."
+              className="w-full pl-10 pr-4 py-2 bg-white/20 text-white placeholder-white/70 rounded-lg border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition hover:shadow-md"
+            >
+              <FaPlus className="text-sm" /> Add
+            </button>
+            <button
+              onClick={exportToCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition hover:shadow-md"
+            >
+              <FaDownload className="text-sm" /> Export
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition hover:shadow-md print:hidden"
+            >
+              <FaPrint className="text-sm" /> Print
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative flex items-center bg-white/30 backdrop-blur-md border border-white/40 rounded-full px-4 py-2 shadow-inner">
-        <FaSearch className="text-white/90" />
-        <input
-          type="text"
-          placeholder="Search Medicine"
-          className="ml-2 outline-none bg-transparent text-white placeholder-white/80 w-[250px]"
-          value={searchQuery}
-          onChange={(e) => {
-            const query = e.target.value.toLowerCase();
-            setSearchQuery(query);
-
-            if (query === '') {
-              setMedicines([...medicines]); // Restore original list when cleared
-            } else {
-              setMedicines(
-                medicines.filter((med) =>
-                  med.drug_description.toLowerCase().includes(query) ||
-                  med.brand_name.toLowerCase().includes(query) ||
-                  med.lot_batch_no.toLowerCase().includes(query)
-                )
-              );
-            }
-          }}
-        />
-      </div>
-    </div>
-
-    {/* Medicine Table - The Only Thing Printed */}
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6 border border-gray-200 print:w-full print:shadow-none">
-      <table className="w-full border-collapse">
-        {/* Table Header */}
-        <thead className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-left">
-          <tr className="uppercase tracking-wide text-sm">
-            <th className="py-4 px-6 font-semibold">Item No.</th>
-            <th className="py-4 px-6 font-semibold">Drug Description</th>
-            <th className="py-4 px-6 font-semibold">Brand Name</th>
-            <th className="py-4 px-6 font-semibold">Lot/Batch No.</th>
-            <th className="py-4 px-6 font-semibold">Expiry Date</th>
-            <th className="py-4 px-6 font-semibold text-center">Physical Balance</th>
-            <th className="py-4 px-6 font-semibold text-center print:hidden">Actions</th> {/* Hide Actions on Print */}
-          </tr>
-        </thead>
-
-{/* Table Body */}
-<tbody className="divide-y divide-gray-200 bg-gray-50">
-  {medicines.map((med, index) => (
-    <tr
-      key={med.item_no}
-      className={`transition-all hover:bg-blue-100 ${
-        newlyAdded.has(med.item_no) ? 'bg-green-100' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-      }`}
-    >
-      {/* Item No. */}
-      <td className="py-4 px-6 text-gray-800 font-semibold text-center">{med.item_no}</td>
-
-      {/* Drug Description */}
-      <td className="py-4 px-6 text-gray-700">{med.drug_description}</td>
-
-      {/* Brand Name */}
-      <td className="py-4 px-6 text-gray-700">{med.brand_name}</td>
-
-      {/* Lot/Batch No. */}
-      <td className="py-4 px-6 text-gray-700">{med.lot_batch_no}</td>
-
-      {/* Expiry Date (No Background) */}
-      <td className="py-4 px-6 text-gray-700 text-center">
-        {new Date(med.expiry_date).toISOString().split('T')[0]}
-      </td>
-
-      {/* Physical Balance - Turns red if below 1000 */}
-      <td
-        className={`py-4 px-6 text-center font-bold ${
-          med.physical_balance < 1000 ? 'text-red-500' : 'text-gray-900'
-        }`}
-      >
-        {med.physical_balance}
-      </td>
-
-      {/* Actions (Hidden on Print) */}
-      <td className="py-4 px-6 flex justify-center space-x-3 print:hidden">
-        {/* Edit Button */}
-        <button
-          className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-md shadow-md transition flex items-center space-x-1"
-          onClick={() => openEditModal(med)}
-        >
-          <FaEdit size={16} />
-          <span>Edit</span>
-        </button>
-
-        {/* Delete Button */}
-        <button
-          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md shadow-md transition flex items-center space-x-1"
-          onClick={() => deleteMedicine(med.item_no)}
-        >
-          <FaTrash size={16} />
-          <span>Delete</span>
-        </button>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
-      </table>
-    </div>
-
-{/* Add Medicine Modal */}
-{isModalOpen && (
-  <>
-    {/* Blur overlay that covers entire screen including sidebar */}
-    <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-md z-40 transition-opacity"
-      onClick={() => {
-        setIsModalOpen(false);
-        setErrors({});
-      }}
-    />
-    
-    {/* Modal container */}
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div 
-        className="relative bg-white p-8 rounded-2xl shadow-2xl w-[420px] border border-gray-200 
-                  animate-fadeIn scale-95 transition-transform duration-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Add Medicine</h2>
-
-        <div className="space-y-4">
-          {Object.keys(newMedicine).map((field) => (
-            <div key={field} className="relative">
-              <input
-                type={field === "expiry_date" ? "date" : field === "physical_balance" ? "number" : "text"}
-                name={field}
-                value={newMedicine[field]}
-                onChange={(e) => {
-                  handleInputChange(e);
-                  if (field === "expiry_date") {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const selectedDate = new Date(e.target.value);
-                    
-                    if (selectedDate < today) {
-                      setErrors(prev => ({
-                        ...prev,
-                        expiry_date: 'Expiry date cannot be in the past'
-                      }));
-                    } else if (errors.expiry_date === 'Expiry date cannot be in the past') {
-                      setErrors(prev => {
-                        const { expiry_date: _, ...rest } = prev;
-                        return rest;
-                      });
-                    }
-                  }
-                }}
-                min={field === "expiry_date" ? new Date().toISOString().split('T')[0] : undefined}
-                className={`w-full px-4 py-3 border rounded-lg bg-gray-100 shadow-sm text-gray-900 
-                           focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-500 
-                           ${errors[field] ? "border-red-500" : "border-gray-300"}`}
-                placeholder={field.replace("_", " ").toUpperCase()}
-              />
-              {errors[field] && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors[field]}
-                </p>
-              )}
+      {/* Main content */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <>
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item No</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drug Description</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch No</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {medicines.length > 0 ? (
+                    medicines.map(medicine => (
+                      <tr 
+                        key={medicine.item_no} 
+                        className={`hover:bg-gray-50 transition-colors ${
+                          newlyAdded.has(medicine.item_no) ? 'bg-green-50 animate-pulse' : ''
+                        }`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {medicine.item_no}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
+                          {medicine.drug_description}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {medicine.brand_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {medicine.lot_batch_no}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          new Date(medicine.expiry_date) < new Date() ? 'text-red-600 font-bold' : 'text-gray-500'
+                        }`}>
+                          {new Date(medicine.expiry_date).toLocaleDateString()}
+                          {new Date(medicine.expiry_date) < new Date() && (
+                            <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">Expired</span>
+                          )}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                          medicine.physical_balance < LOW_STOCK_THRESHOLD ? 'text-red-600' : 'text-gray-900'
+                        }`}>
+                          <span className="inline-block min-w-[50px]">
+                            {medicine.physical_balance}
+                          </span>
+                          {medicine.physical_balance < LOW_STOCK_THRESHOLD && (
+                            <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Low Stock</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 print:hidden">
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => openEditModal(medicine)}
+                              className="text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+                            >
+                              <FaEdit size={14} /> Edit
+                            </button>
+                            <button
+                              onClick={() => archiveMedicine(medicine.item_no)}
+                              className="text-red-600 hover:text-red-800 flex items-center gap-1 transition-colors"
+                              disabled={isDeleting}
+                            >
+                              <FaTrash size={14} /> {isDeleting ? 'Archiving...' : 'Archive'}
+                            </button>
+                            <button
+                              className="text-purple-600 hover:text-purple-800 flex items-center gap-1 transition-colors"
+                              title="Generate QR Code"
+                            >
+                              <FaQrcode size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-8 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <svg className="w-16 h-16 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                          <h3 className="text-lg font-medium text-gray-900 mb-1">
+                            {searchQuery ? 'No matching medicines found' : 'No medicines in inventory'}
+                          </h3>
+                          <p className="text-sm text-gray-500 max-w-md">
+                            {searchQuery ? 'Try adjusting your search query' : 'Click the "Add" button to add new medicines'}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          ))}
-          {isDuplicate && <p className="text-red-500 text-xs">This medicine already exists!</p>}
-        </div>
-
-        <div className="flex justify-between mt-6">
-          <button 
-            onClick={() => {
-              setIsModalOpen(false);
-              setErrors({});
-            }}
-            className="px-5 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400 transition-all"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={addMedicine}
-            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all 
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isDuplicate || isSaving || Object.keys(errors).length > 0}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
-        </div>
+          </>
+        )}
       </div>
-    </div>
-  </>
-)}
 
-{/* Edit Medicine Modal */}
-{isEditModalOpen && (
-  <>
-    {/* Blur overlay that covers entire screen including sidebar */}
-    <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-md z-40 transition-opacity"
-      onClick={() => {
-        setIsEditModalOpen(false);
-        setEditErrors({});
-      }}
-    />
-    
-    {/* Modal container */}
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div 
-        className="relative bg-white p-8 rounded-2xl shadow-2xl w-[420px] border border-gray-200 
-                  animate-fadeIn scale-95 transition-transform duration-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Edit Medicine</h2>
-
-        <div className="space-y-4">
-          {Object.keys(editMedicine).map((field) => (
-            <div key={field} className="relative">
-              <input
-                type={field === "expiry_date" ? "date" : field === "physical_balance" ? "number" : "text"}
-                name={field}
-                value={editMedicine[field]}
-                onChange={(e) => {
-                  handleEditInputChange(e);
-                  if (field === "expiry_date") {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const selectedDate = new Date(e.target.value);
-                    
-                    if (selectedDate < today) {
-                      setEditErrors(prev => ({
-                        ...prev,
-                        expiry_date: 'Expiry date cannot be in the past'
-                      }));
-                    } else if (editErrors.expiry_date === 'Expiry date cannot be in the past') {
-                      setEditErrors(prev => {
-                        const { expiry_date: _, ...rest } = prev;
-                        return rest;
-                      });
-                    }
-                  }
-                }}
-                min={field === "expiry_date" ? new Date().toISOString().split('T')[0] : undefined}
-                className={`w-full px-4 py-3 border rounded-lg bg-gray-100 shadow-sm text-gray-900 
-                           focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-500 
-                           ${editErrors[field] ? "border-red-500" : "border-gray-300"}`}
-                placeholder={field.replace("_", " ").toUpperCase()}
-              />
-              {editErrors[field] && (
-                <p className="text-red-500 text-xs mt-1">
-                  {editErrors[field]}
-                </p>
-              )}
+      {/* Add Medicine Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fade-in"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Add New Medicine</h2>
+                <button 
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setErrors({});
+                  }}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {[
+                  { name: 'drug_description', label: 'Drug Description', type: 'text' },
+                  { name: 'brand_name', label: 'Brand Name', type: 'text' },
+                  { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
+                  { name: 'expiry_date', label: 'Expiry Date', type: 'date', min: new Date().toISOString().split('T')[0] },
+                  { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
+                ].map(field => (
+                  <div key={field.name}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {field.label}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type={field.type}
+                      name={field.name}
+                      value={newMedicine[field.name]}
+                      onChange={handleInputChange}
+                      min={field.min}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${
+                        errors[field.name] ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {errors[field.name] && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
+                        </svg>
+                        {errors[field.name]}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setErrors({});
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={addMedicine}
+                  disabled={isSaving}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition"
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : 'Save'}
+                </button>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
+      )}
 
-        <div className="flex justify-between mt-6">
-          <button 
-            onClick={() => {
-              setIsEditModalOpen(false);
-              setEditErrors({});
-            }}
-            className="px-5 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400 transition-all"
+      {/* Edit Medicine Modal */}
+      {isEditModalOpen && selectedMedicine && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fade-in"
+            onClick={e => e.stopPropagation()}
           >
-            Cancel
-          </button>
-          <button 
-            onClick={saveEditedMedicine}
-            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all 
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isSaving || Object.keys(editErrors).length > 0}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Edit Medicine</h2>
+                <button 
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditErrors({});
+                  }}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {[
+                  { name: 'drug_description', label: 'Drug Description', type: 'text' },
+                  { name: 'brand_name', label: 'Brand Name', type: 'text' },
+                  { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
+                  { name: 'expiry_date', label: 'Expiry Date', type: 'date', min: new Date().toISOString().split('T')[0] },
+                  { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
+                ].map(field => (
+                  <div key={field.name}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {field.label}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type={field.type}
+                      name={field.name}
+                      value={editMedicine[field.name]}
+                      onChange={handleEditInputChange}
+                      min={field.min}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${
+                        editErrors[field.name] ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {editErrors[field.name] && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
+                        </svg>
+                        {editErrors[field.name]}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditErrors({});
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEditedMedicine}
+                  disabled={isSaving}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition"
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </>
-)}
+      )}
     </Layout>
   );
 };
