@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import ProfileImage from './ProfileImage';
-import { HiOutlineBell } from 'react-icons/hi';
+import { HiOutlineBell, HiOutlineSearch } from 'react-icons/hi';
 import { usePathname } from 'next/navigation';
 
 const Layout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const pathname = usePathname();
 
   useEffect(() => {
@@ -26,23 +27,19 @@ const Layout = ({ children }) => {
     }
   };
 
-  // Function to get the current page title based on route
   const getPageTitle = () => {
-    const basePath = pathname.split('/')[1]; // Get the first part of the path
-    switch(basePath) {
-      case 'dashboard':
-        return 'Dashboard';
-      case 'medicines':
-        return '';
-      case 'expired-medicines':
-        return '';
-      case 'archive':
-        return '';
-      case 'settings':
-        return '';
-      default:
-        return 'Dashboard'; // Default fallback
-    }
+    const basePath = pathname.split('/')[1];
+    const titles = {
+      'dashboard': 'Dashboard',
+      'medicines': 'Medicine Inventory',
+      'expired-medicines': 'Expired Medicines',
+      'archive': 'Archive',
+      'reports': 'Reports',
+      'prescription': 'Prescriptions',
+      'calculate-medicine': 'Medicine Calculator',
+      'settings': 'Settings'
+    };
+    return titles[basePath] || 'Dashboard';
   };
 
   if (!isMounted) {
@@ -54,22 +51,45 @@ const Layout = ({ children }) => {
       <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       
       <main 
-        className="flex-1 p-8 print:p-0 print:w-full overflow-y-auto" 
+        className="flex-1 overflow-y-auto" 
         style={{
           marginLeft: isSidebarOpen ? '16rem' : '5rem',
           transition: 'margin-left 300ms ease-in-out'
         }}
       >
-        {/* Top Section with Dynamic Title */}
-        <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-md mb-8 print:hidden">
-          <h1 className="text-2xl font-semibold capitalize">{getPageTitle()}</h1>
-          <div className="flex items-center space-x-6">
-            <HiOutlineBell className="text-2xl text-gray-600 cursor-pointer hover:text-gray-800 transition" />
-            <ProfileImage name="Milo Galendez" imageUrl="" />
+        {/* Top Navigation Bar */}
+        <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 print:hidden">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">{getPageTitle()}</h1>
+            
+            <div className="flex items-center space-x-4">
+              <div className="relative hidden md:block">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                </div>
+              </div>
+              
+              <button className="p-2 text-gray-500 hover:text-gray-700 relative">
+                <HiOutlineBell className="h-6 w-6" />
+                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+              </button>
+              
+              <div className="flex items-center space-x-2">
+                <ProfileImage name="Milo Galendez" size="md" />
+                {isSidebarOpen && (
+                  <div className="hidden lg:block">
+                    <p className="text-sm font-medium text-gray-900">Milo Galendez</p>
+                    <p className="text-xs text-gray-500">Admin</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        </header>
 
-        {children}
+        {/* Main Content Area */}
+        <div className="p-6">
+          {children}
+        </div>
       </main>
     </div>
   );

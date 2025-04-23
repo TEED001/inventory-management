@@ -47,7 +47,12 @@ const ExpiredMedicines = () => {
             setIsLoading(false);
         } catch (error) {
             console.error('Error:', error);
-            Swal.fire('Error', 'Failed to load expired medicines', 'error');
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to load expired medicines',
+                icon: 'error',
+                confirmButtonColor: '#4f46e5',
+            });
             setExpiredMeds([]);
             setIsLoading(false);
         }
@@ -83,8 +88,8 @@ const ExpiredMedicines = () => {
             text: "This will archive this expired medicine record!",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#ef4444',
             confirmButtonText: 'Archive',
             cancelButtonText: 'Cancel',
             reverseButtons: true
@@ -105,13 +110,23 @@ const ExpiredMedicines = () => {
                         timer: 1500,
                         showConfirmButton: false
                     });
-                    fetchExpiredMedicines(); // Refresh data
+                    fetchExpiredMedicines();
                 } else {
                     const error = await response.json();
-                    Swal.fire('Error', error.error || 'Failed to archive record', 'error');
+                    Swal.fire({
+                        title: 'Error',
+                        text: error.error || 'Failed to archive record',
+                        icon: 'error',
+                        confirmButtonColor: '#4f46e5',
+                    });
                 }
             } catch (error) {
-                Swal.fire('Error', 'Failed to archive record', 'error');
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to archive record',
+                    icon: 'error',
+                    confirmButtonColor: '#4f46e5',
+                });
             }
         }
     };
@@ -122,8 +137,8 @@ const ExpiredMedicines = () => {
             text: "This will move the medicine back to active inventory if its expiry date is in the future.",
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#ef4444',
             confirmButtonText: 'Restore',
             cancelButtonText: 'Cancel',
             reverseButtons: true
@@ -150,13 +165,23 @@ const ExpiredMedicines = () => {
                         timer: 1500,
                         showConfirmButton: false
                     });
-                    fetchExpiredMedicines(); // Refresh data
+                    fetchExpiredMedicines();
                 } else {
                     const error = await response.json();
-                    Swal.fire('Error', error.error || 'Failed to restore medicine', 'error');
+                    Swal.fire({
+                        title: 'Error',
+                        text: error.error || 'Failed to restore medicine',
+                        icon: 'error',
+                        confirmButtonColor: '#4f46e5',
+                    });
                 }
             } catch (error) {
-                Swal.fire('Error', 'Failed to restore medicine', 'error');
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to restore medicine',
+                    icon: 'error',
+                    confirmButtonColor: '#4f46e5',
+                });
             }
         }
     };
@@ -206,13 +231,23 @@ const ExpiredMedicines = () => {
                     timer: 1500,
                     showConfirmButton: false
                 });
-                fetchExpiredMedicines(); // Refresh data
+                fetchExpiredMedicines();
             } else {
                 const error = await response.json();
-                Swal.fire('Error', error.error || 'Failed to update medicine', 'error');
+                Swal.fire({
+                    title: 'Error',
+                    text: error.error || 'Failed to update medicine',
+                    icon: 'error',
+                    confirmButtonColor: '#4f46e5',
+                });
             }
         } catch (error) {
-            Swal.fire('Error', 'Failed to update medicine', 'error');
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to update medicine',
+                icon: 'error',
+                confirmButtonColor: '#4f46e5',
+            });
         }
     };
 
@@ -221,22 +256,32 @@ const ExpiredMedicines = () => {
         return sortConfig.direction === 'asc' ? '↑' : '↓';
     };
 
+    const formatDate = (dateString) => {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
+    };
+
     return (
         <Layout>
-            <div className="container mx-auto px-4 py-8">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            {/* Header Section */}
+            <div className="px-6 py-4 bg-white border-b border-gray-200">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Expired Medicines</h1>
-                        <p className="text-sm text-gray-600 mt-1">
-                            {pagination.total} records found • Page {pagination.page} of {pagination.totalPages}
+                        <p className="text-sm text-gray-500 mt-1">
+                            {pagination.total} records found
                         </p>
                     </div>
-                    <div className="relative w-full md:w-96">
-                        <FaSearch className="absolute left-3 top-3 text-gray-400" />
+                    
+                    {/* Search Bar */}
+                    <div className="relative flex-grow max-w-md">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <FaSearch className="h-4 w-4 text-gray-400" />
+                        </div>
                         <input
                             type="text"
                             placeholder="Search by drug, brand, or batch..."
-                            className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300 w-full transition-all duration-300"
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition"
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value);
@@ -245,19 +290,24 @@ const ExpiredMedicines = () => {
                         />
                     </div>
                 </div>
+            </div>
 
+            {/* Main Content */}
+            <div className="px-6 py-4">
                 {isLoading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
+                    <div className="flex justify-center items-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+                    <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                        {/* Table */}
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gradient-to-r from-red-50 to-red-100">
+                                <thead className="bg-gray-50">
                                     <tr>
                                         <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-200 transition-colors"
+                                            scope="col"
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                             onClick={() => handleSort('drug_description')}
                                         >
                                             <div className="flex items-center">
@@ -265,7 +315,8 @@ const ExpiredMedicines = () => {
                                             </div>
                                         </th>
                                         <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-200 transition-colors"
+                                            scope="col"
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                             onClick={() => handleSort('brand_name')}
                                         >
                                             <div className="flex items-center">
@@ -273,7 +324,8 @@ const ExpiredMedicines = () => {
                                             </div>
                                         </th>
                                         <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-200 transition-colors"
+                                            scope="col"
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                             onClick={() => handleSort('lot_batch_no')}
                                         >
                                             <div className="flex items-center">
@@ -281,74 +333,78 @@ const ExpiredMedicines = () => {
                                             </div>
                                         </th>
                                         <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider cursor-pointer hover:bg-red-200 transition-colors"
+                                            scope="col"
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                             onClick={() => handleSort('expiry_date')}
                                         >
                                             <div className="flex items-center">
                                                 Expiry Date {getSortIcon('expiry_date')}
                                             </div>
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Qty</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-red-700 uppercase tracking-wider">Actions</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Qty
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {expiredMeds.map((med) => (
-                                        <tr key={med.id} className="hover:bg-red-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                        <tr key={med.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4">
                                                 <div className="text-sm font-medium text-gray-900">{med.drug_description}</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{med.brand_name}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{med.lot_batch_no}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {new Date(med.expiry_date).toLocaleDateString('en-US', {
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric'
-                                                })}
+                                            <td className="px-6 py-4 text-sm text-gray-500">{med.brand_name}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">{med.lot_batch_no}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                                {formatDate(med.expiry_date)}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <td className="px-6 py-4 text-sm text-gray-500">
                                                 {med.physical_balance}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                            <td className="px-6 py-4">
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                                     ${med.is_archived ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800'}`}>
                                                     {med.is_archived ? 'Archived' : 'Expired'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex space-x-2">
-                                                <button
-                                                    onClick={() => openEditModal(med)}
-                                                    className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-full transition-colors"
-                                                    title="Edit record"
-                                                >
-                                                    <FaEdit />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(med.id)}
-                                                    className="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-full transition-colors"
-                                                    title="Archive record"
-                                                >
-                                                    <FaArchive />
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        // QR Code functionality placeholder
-                                                        Swal.fire({
-                                                            title: 'QR Code',
-                                                            text: 'QR code functionality would be implemented here',
-                                                            imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + 
-                                                                    encodeURIComponent(`Medicine: ${med.drug_description}\nBrand: ${med.brand_name}\nBatch: ${med.lot_batch_no}\nExpiry: ${med.expiry_date}`),
-                                                            imageAlt: 'QR Code',
-                                                            showConfirmButton: true
-                                                        });
-                                                    }}
-                                                    className="p-2 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded-full transition-colors"
-                                                    title="Generate QR Code"
-                                                >
-                                                    <FaQrcode />
-                                                </button>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <div className="flex justify-end space-x-2">
+                                                    <button
+                                                        onClick={() => openEditModal(med)}
+                                                        className="text-indigo-600 hover:text-indigo-900"
+                                                        title="Edit record"
+                                                    >
+                                                        <FaEdit className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(med.id)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                        title="Archive record"
+                                                    >
+                                                        <FaArchive className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            Swal.fire({
+                                                                title: 'QR Code',
+                                                                text: 'QR code functionality would be implemented here',
+                                                                imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + 
+                                                                        encodeURIComponent(`Medicine: ${med.drug_description}\nBrand: ${med.brand_name}\nBatch: ${med.lot_batch_no}\nExpiry: ${med.expiry_date}`),
+                                                                imageAlt: 'QR Code',
+                                                                showConfirmButton: true
+                                                            });
+                                                        }}
+                                                        className="text-purple-600 hover:text-purple-900"
+                                                        title="Generate QR Code"
+                                                    >
+                                                        <FaQrcode className="h-4 w-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -357,8 +413,16 @@ const ExpiredMedicines = () => {
                         </div>
 
                         {expiredMeds.length === 0 && (
-                            <div className="text-center py-12 text-gray-500">
-                                {searchQuery ? 'No matching expired medicines found' : 'No expired medicines in inventory'}
+                            <div className="text-center py-12">
+                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                                    {searchQuery ? 'No matching expired medicines found' : 'No expired medicines in inventory'}
+                                </h3>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    {searchQuery ? 'Try adjusting your search query' : 'All medicines are currently within their expiry dates'}
+                                </p>
                             </div>
                         )}
 
@@ -429,7 +493,7 @@ const ExpiredMedicines = () => {
                                                         onClick={() => handlePageChange(pageNum)}
                                                         className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                                                             pagination.page === pageNum
-                                                                ? 'z-10 bg-red-50 border-red-500 text-red-600'
+                                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
                                                                 : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                                                         }`}
                                                     >
@@ -463,85 +527,80 @@ const ExpiredMedicines = () => {
                 )}
             </div>
 
-{/* Edit Medicine Modal */}
-{editModalOpen && (
-  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div 
-      className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fade-in"
-      onClick={e => e.stopPropagation()}
-    >
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Edit Medicine</h2>
-          <button 
-            onClick={() => setEditModalOpen(false)}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {[
-            { name: 'drug_description', label: 'Drug Description', type: 'text' },
-            { name: 'brand_name', label: 'Brand Name', type: 'text' },
-            { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
-            { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
-            { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
-          ].map(field => (
-            <div key={field.name}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {field.label}
-                <span className="text-red-500">*</span>
-              </label>
-              <input
-                type={field.type}
-                name={field.name}
-                value={formData[field.name]}
-                onChange={handleInputChange}
-                min={field.min}
-                className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition border-gray-300"
-                required
-              />
-            </div>
-          ))}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Reason
-            </label>
-            <textarea
-              name="reason"
-              value={formData.reason}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition border-gray-300"
-              rows="3"
-            />
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setEditModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-)}
-
+            {/* Edit Medicine Modal */}
+            {editModalOpen && (
+                <div className="fixed z-50 inset-0 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                            <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+                        </div>
+                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                <div className="sm:flex sm:items-start">
+                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                        <div className="flex justify-between items-center">
+                                            <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                                Edit Expired Medicine
+                                            </h3>
+                                            <button
+                                                onClick={() => setEditModalOpen(false)}
+                                                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                                            >
+                                                <span className="sr-only">Close</span>
+                                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                                            {[
+                                                { name: 'drug_description', label: 'Drug Description', type: 'text' },
+                                                { name: 'brand_name', label: 'Brand Name', type: 'text' },
+                                                { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
+                                                { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
+                                                { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
+                                            ].map(field => (
+                                                <div key={field.name}>
+                                                    <label htmlFor={field.name} className="block text-sm font-medium text-gray-700">
+                                                        {field.label}
+                                                    </label>
+                                                    <input
+                                                        type={field.type}
+                                                        name={field.name}
+                                                        id={field.name}
+                                                        value={formData[field.name]}
+                                                        onChange={handleInputChange}
+                                                        min={field.min}
+                                                        className="mt-1 block w-full shadow-sm sm:text-sm rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 border py-2 px-3"
+                                                        required
+                                                    />
+                                                </div>
+                                            ))}
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                                <button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                                >
+                                    Save Changes
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditModalOpen(false)}
+                                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 };

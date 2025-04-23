@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
-import { FaTrash, FaEdit, FaPlus, FaPrint, FaDownload, FaSearch, FaHistory, FaQrcode } from "react-icons/fa";
+import { FaTrash, FaEdit, FaPlus, FaDownload, FaPrint, FaSearch, FaQrcode } from "react-icons/fa";
 import Swal from 'sweetalert2';
 
 const Medicines = () => {
@@ -10,15 +10,10 @@ const Medicines = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [newlyAdded, setNewlyAdded] = useState(new Set());
   
-  // Format date to show month names (e.g., "April 15, 2023")
+  // Format date
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  // Get today's date in YYYY-MM-DD format for date input min attribute
-  const getTodayDate = () => {
-    return new Date().toISOString().split('T')[0];
   };
 
   // Modal states
@@ -51,7 +46,7 @@ const Medicines = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch medicines with error handling
+  // Fetch medicines
   const fetchMedicines = async () => {
     setIsLoading(true);
     try {
@@ -66,7 +61,7 @@ const Medicines = () => {
         title: 'Error',
         text: 'Failed to load medicines',
         icon: 'error',
-        confirmButtonColor: '#3b82f6',
+        confirmButtonColor: '#4f46e5',
       });
     } finally {
       setIsLoading(false);
@@ -77,75 +72,41 @@ const Medicines = () => {
     fetchMedicines();
   }, [searchQuery]);
 
-  // Handle input changes with validation
+  // Input handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewMedicine(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when typing
-    if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = {...prev};
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+    setNewMedicine(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: undefined }));
   };
 
-  // Handle edit input changes with validation
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
-    setEditMedicine(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when typing
-    if (editErrors[name]) {
-      setEditErrors(prev => {
-        const newErrors = {...prev};
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+    setEditMedicine(prev => ({ ...prev, [name]: value }));
+    if (editErrors[name]) setEditErrors(prev => ({ ...prev, [name]: undefined }));
   };
 
-  // Validate medicine form
+  // Form validation
   const validateForm = (medicine, isEdit = false) => {
     const newErrors = {};
     
-    if (!medicine.drug_description.trim()) {
-      newErrors.drug_description = 'Drug description is required';
-    }
+    if (!medicine.drug_description.trim()) newErrors.drug_description = 'Required';
+    if (!medicine.brand_name.trim()) newErrors.brand_name = 'Required';
+    if (!medicine.lot_batch_no.trim()) newErrors.lot_batch_no = 'Required';
+    if (!medicine.expiry_date) newErrors.expiry_date = 'Required';
     
-    if (!medicine.brand_name.trim()) {
-      newErrors.brand_name = 'Brand name is required';
-    }
-    
-    if (!medicine.lot_batch_no.trim()) {
-      newErrors.lot_batch_no = 'Batch number is required';
-    }
-    
-
     if (medicine.physical_balance === '' || isNaN(medicine.physical_balance)) {
-      newErrors.physical_balance = 'Valid quantity is required';
+      newErrors.physical_balance = 'Invalid quantity';
     } else if (medicine.physical_balance < 0) {
-      newErrors.physical_balance = 'Quantity cannot be negative';
+      newErrors.physical_balance = 'Cannot be negative';
     }
     
-    if (isEdit) {
-      setEditErrors(newErrors);
-    } else {
-      setErrors(newErrors);
-    }
+    if (isEdit) setEditErrors(newErrors);
+    else setErrors(newErrors);
     
     return Object.keys(newErrors).length === 0;
   };
 
-  // Add new medicine
+  // CRUD operations
   const addMedicine = async () => {
     if (!validateForm(newMedicine)) return;
     
@@ -160,12 +121,11 @@ const Medicines = () => {
       if (!response.ok) {
         const errorData = await response.json();
         if (response.status === 409) {
-          // Duplicate medicine error
           Swal.fire({
             title: 'Duplicate Medicine',
             text: errorData.error || 'This medicine already exists',
             icon: 'warning',
-            confirmButtonColor: '#3b82f6',
+            confirmButtonColor: '#4f46e5',
           });
           return;
         }
@@ -173,11 +133,9 @@ const Medicines = () => {
       }
       
       const addedMedicine = await response.json();
-      
       setMedicines(prev => [...prev, addedMedicine].sort((a, b) => 
         a.drug_description.localeCompare(b.drug_description)
       ));
-      
       setNewlyAdded(prev => new Set([...prev, addedMedicine.item_no]));
       setIsModalOpen(false);
       setNewMedicine({
@@ -192,7 +150,7 @@ const Medicines = () => {
         title: 'Success',
         text: 'Medicine added successfully',
         icon: 'success',
-        confirmButtonColor: '#3b82f6',
+        confirmButtonColor: '#4f46e5',
       });
     } catch (error) {
       console.error('Error adding medicine:', error);
@@ -200,14 +158,13 @@ const Medicines = () => {
         title: 'Error',
         text: error.message || 'Failed to add medicine',
         icon: 'error',
-        confirmButtonColor: '#3b82f6',
+        confirmButtonColor: '#4f46e5',
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Open edit modal
   const openEditModal = (medicine) => {
     setSelectedMedicine(medicine);
     setEditMedicine({
@@ -220,7 +177,6 @@ const Medicines = () => {
     setIsEditModalOpen(true);
   };
 
-  // Save edited medicine
   const saveEditedMedicine = async () => {
     if (!validateForm(editMedicine, true)) return;
     
@@ -249,7 +205,7 @@ const Medicines = () => {
         title: 'Success',
         text: 'Medicine updated successfully',
         icon: 'success',
-        confirmButtonColor: '#3b82f6',
+        confirmButtonColor: '#4f46e5',
       });
     } catch (error) {
       console.error('Error updating medicine:', error);
@@ -257,29 +213,22 @@ const Medicines = () => {
         title: 'Error',
         text: error.message || 'Failed to update medicine',
         icon: 'error',
-        confirmButtonColor: '#3b82f6',
+        confirmButtonColor: '#4f46e5',
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Archive medicine
   const archiveMedicine = async (itemNo) => {
     const result = await Swal.fire({
       title: 'Archive Medicine?',
       text: 'This will move the medicine to the archive',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#3b82f6',
+      confirmButtonColor: '#4f46e5',
       cancelButtonColor: '#ef4444',
-      confirmButtonText: 'Yes, archive it!',
-      backdrop: `
-        rgba(0,0,0,0.5)
-        url("/images/nyan-cat.gif")
-        left top
-        no-repeat
-      `
+      confirmButtonText: 'Yes, archive it',
     });
     
     if (result.isConfirmed) {
@@ -302,7 +251,7 @@ const Medicines = () => {
           title: 'Archived!',
           text: 'Medicine moved to archive',
           icon: 'success',
-          confirmButtonColor: '#3b82f6',
+          confirmButtonColor: '#4f46e5',
         });
       } catch (error) {
         console.error('Error archiving medicine:', error);
@@ -310,7 +259,7 @@ const Medicines = () => {
           title: 'Error',
           text: error.message || 'Failed to archive medicine',
           icon: 'error',
-          confirmButtonColor: '#3b82f6',
+          confirmButtonColor: '#4f46e5',
         });
       } finally {
         setIsDeleting(false);
@@ -318,7 +267,6 @@ const Medicines = () => {
     }
   };
 
-  // Export to CSV
   const exportToCSV = () => {
     const headers = ['Item No', 'Drug Description', 'Brand Name', 'Batch No', 'Expiry Date', 'Quantity'];
     const csvContent = [
@@ -343,355 +291,385 @@ const Medicines = () => {
     document.body.removeChild(link);
   };
 
-  // Low stock threshold
   const LOW_STOCK_THRESHOLD = 1000;
 
-    return (
-      <Layout>
-        {/* Header with actions */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 p-4 bg-gradient-to-r from-blue-600 to-blue-500 rounded-lg shadow">
+  return (
+    <Layout>
+      {/* Header Section */}
+      <div className="px-6 py-4 bg-white border-b border-gray-200">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Medicine Inventory</h1>
-            <p className="text-sm text-white/90 mt-1">
+            <h1 className="text-2xl font-bold text-gray-800">Medicine Inventory</h1>
+            <p className="text-sm text-gray-500 mt-1">
               {medicines.length} {medicines.length === 1 ? 'item' : 'items'} in inventory
             </p>
           </div>
           
-          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-            {/* Search */}
-            <div className="relative flex-grow">
-              <FaSearch className="absolute left-3 top-3 text-white/80" />
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            {/* Search Bar */}
+            <div className="relative flex-grow max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="h-4 w-4 text-gray-400" />
+              </div>
               <input
                 type="text"
                 placeholder="Search medicines..."
-                className="w-full pl-10 pr-4 py-2 bg-white/20 text-white placeholder-white/70 rounded-lg border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             
-            {/* Action buttons - now icon-only with tooltips */}
+            {/* Action Buttons */}
             <div className="flex gap-2">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="p-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition hover:shadow-md"
-                title="Add Medicine"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
               >
-                <FaPlus />
+                <FaPlus className="mr-2 h-3 w-3" />
+                Add Medicine
               </button>
-              <button
-                onClick={exportToCSV}
-                className="p-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition hover:shadow-md"
-                title="Export to CSV"
-              >
-                <FaDownload />
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="p-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition hover:shadow-md print:hidden"
-                title="Print"
-              >
-                <FaPrint />
-              </button>
+              <div className="hidden sm:flex gap-2">
+                <button
+                  onClick={exportToCSV}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
+                  title="Export to CSV"
+                >
+                  <FaDownload className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition print:hidden"
+                  title="Print"
+                >
+                  <FaPrint className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-  
-        {/* Main content */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : (
-            <>
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item No</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drug Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch No</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {medicines.length > 0 ? (
-                      medicines.map(medicine => (
-                        <tr 
-                          key={medicine.item_no} 
-                          className={`hover:bg-gray-50 transition-colors ${
-                            newlyAdded.has(medicine.item_no) ? 'bg-green-50 animate-pulse' : ''
-                          }`}
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {medicine.item_no}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                            {medicine.drug_description}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {medicine.brand_name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {medicine.lot_batch_no}
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                            new Date(medicine.expiry_date) < new Date() ? 'text-red-600 font-bold' : 'text-gray-500'
-                          }`}>
+      </div>
+
+      {/* Main Content */}
+      <div className="px-6 py-4">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          </div>
+        ) : (
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Item No
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Drug Description
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Brand
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Batch No
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Expiry Date
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quantity
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {medicines.length > 0 ? (
+                    medicines.map(medicine => (
+                      <tr 
+                        key={medicine.item_no} 
+                        className={`hover:bg-gray-50 ${newlyAdded.has(medicine.item_no) ? 'bg-green-50' : ''}`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {medicine.item_no}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                          {medicine.drug_description}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {medicine.brand_name}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {medicine.lot_batch_no}
+                        </td>
+                        <td className={`px-6 py-4 text-sm ${new Date(medicine.expiry_date) < new Date() ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                          <div className="flex items-center">
                             {formatDate(medicine.expiry_date)}
                             {new Date(medicine.expiry_date) < new Date() && (
-                              <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">Expired</span>
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Expired
+                              </span>
                             )}
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                            medicine.physical_balance < LOW_STOCK_THRESHOLD ? 'text-red-600' : 'text-gray-900'
-                          }`}>
-                            <span className="inline-block min-w-[50px]">
-                              {medicine.physical_balance}
-                            </span>
+                          </div>
+                        </td>
+                        <td className={`px-6 py-4 text-sm font-medium ${medicine.physical_balance < LOW_STOCK_THRESHOLD ? 'text-yellow-600' : 'text-gray-900'}`}>
+                          <div className="flex items-center">
+                            {medicine.physical_balance}
                             {medicine.physical_balance < LOW_STOCK_THRESHOLD && (
-                              <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Low Stock</span>
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Low Stock
+                              </span>
                             )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 print:hidden">
-                            <div className="flex gap-3">
-                              <button
-                                onClick={() => openEditModal(medicine)}
-                                className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                                title="Edit"
-                              >
-                                <FaEdit size={16} />
-                              </button>
-                              <button
-                                onClick={() => archiveMedicine(medicine.item_no)}
-                                className="text-red-600 hover:text-red-800 transition-colors p-1"
-                                disabled={isDeleting}
-                                title="Archive"
-                              >
-                                <FaTrash size={16} />
-                              </button>
-                              <button
-                                className="text-purple-600 hover:text-purple-800 transition-colors p-1"
-                                title="Generate QR Code"
-                              >
-                                <FaQrcode size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="7" className="px-6 py-8 text-center">
-                          <div className="flex flex-col items-center justify-center">
-                            <svg className="w-16 h-16 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">
-                              {searchQuery ? 'No matching medicines found' : 'No medicines in inventory'}
-                            </h3>
-                            <p className="text-sm text-gray-500 max-w-md">
-                              {searchQuery ? 'Try adjusting your search query' : 'Click the "Add" button to add new medicines'}
-                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium print:hidden">
+                          <div className="flex justify-end space-x-3">
+                            <button
+                              onClick={() => openEditModal(medicine)}
+                              className="text-indigo-600 hover:text-indigo-900"
+                              title="Edit"
+                            >
+                              <FaEdit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => archiveMedicine(medicine.item_no)}
+                              className="text-red-600 hover:text-red-900"
+                              disabled={isDeleting}
+                              title="Archive"
+                            >
+                              <FaTrash className="h-4 w-4" />
+                            </button>
+                            <button
+                              className="text-purple-600 hover:text-purple-900"
+                              title="Generate QR Code"
+                            >
+                              <FaQrcode className="h-4 w-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                          <h3 className="text-lg font-medium text-gray-900 mb-1">
+                            {searchQuery ? 'No matching medicines found' : 'No medicines in inventory'}
+                          </h3>
+                          <p className="text-sm text-gray-500 max-w-md">
+                            {searchQuery ? 'Try adjusting your search query' : 'Click the "Add Medicine" button to add new medicines'}
+                          </p>
+                          {!searchQuery && (
+                            <button
+                              onClick={() => setIsModalOpen(true)}
+                              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
+                            >
+                              <FaPlus className="mr-2 h-3 w-3" />
+                              Add Medicine
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add Medicine Modal */}
+      {isModalOpen && (
+        <div className="fixed z-50 inset-0 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">
+                        Add New Medicine
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setIsModalOpen(false);
+                          setErrors({});
+                        }}
+                        className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                      >
+                        <span className="sr-only">Close</span>
+                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      {[
+                        { name: 'drug_description', label: 'Drug Description', type: 'text' },
+                        { name: 'brand_name', label: 'Brand Name', type: 'text' },
+                        { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
+                        { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
+                        { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
+                      ].map(field => (
+                        <div key={field.name}>
+                          <label htmlFor={field.name} className="block text-sm font-medium text-gray-700">
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type}
+                            name={field.name}
+                            id={field.name}
+                            value={newMedicine[field.name]}
+                            onChange={handleInputChange}
+                            min={field.min}
+                            className={`mt-1 block w-full shadow-sm sm:text-sm rounded-md ${errors[field.name] ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'} border py-2 px-3`}
+                          />
+                          {errors[field.name] && (
+                            <p className="mt-1 text-sm text-red-600">{errors[field.name]}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </>
-          )}
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={addMedicine}
+                  disabled={isSaving}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 transition"
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setErrors({});
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-  
-        {/* Add Medicine Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div 
-              className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fade-in"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">Add New Medicine</h2>
-                  <button 
-                    onClick={() => {
-                      setIsModalOpen(false);
-                      setErrors({});
-                    }}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {[
-                    { name: 'drug_description', label: 'Drug Description', type: 'text' },
-                    { name: 'brand_name', label: 'Brand Name', type: 'text' },
-                    { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
-                    { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
-                    { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
-                  ].map(field => (
-                    <div key={field.name}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {field.label}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type={field.type}
-                        name={field.name}
-                        value={newMedicine[field.name]}
-                        onChange={handleInputChange}
-                        min={field.min}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${
-                          errors[field.name] ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      />
-                      {errors[field.name] && (
-                        <p className="mt-1 text-sm text-red-600 flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
-                          </svg>
-                          {errors[field.name]}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsModalOpen(false);
-                      setErrors({});
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={addMedicine}
-                    disabled={isSaving}
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition"
-                  >
-                    {isSaving ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      )}
+
+      {/* Edit Medicine Modal */}
+      {isEditModalOpen && selectedMedicine && (
+        <div className="fixed z-50 inset-0 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">
+                        Edit Medicine
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setIsEditModalOpen(false);
+                          setEditErrors({});
+                        }}
+                        className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                      >
+                        <span className="sr-only">Close</span>
+                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        Saving...
-                      </>
-                    ) : 'Save'}
-                  </button>
+                      </button>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      {[
+                        { name: 'drug_description', label: 'Drug Description', type: 'text' },
+                        { name: 'brand_name', label: 'Brand Name', type: 'text' },
+                        { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
+                        { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
+                        { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
+                      ].map(field => (
+                        <div key={field.name}>
+                          <label htmlFor={`edit-${field.name}`} className="block text-sm font-medium text-gray-700">
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type}
+                            name={field.name}
+                            id={`edit-${field.name}`}
+                            value={editMedicine[field.name]}
+                            onChange={handleEditInputChange}
+                            min={field.min}
+                            className={`mt-1 block w-full shadow-sm sm:text-sm rounded-md ${editErrors[field.name] ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'} border py-2 px-3`}
+                          />
+                          {editErrors[field.name] && (
+                            <p className="mt-1 text-sm text-red-600">{editErrors[field.name]}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={saveEditedMedicine}
+                  disabled={isSaving}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 transition"
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditErrors({});
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
-        )}
-  
-        {/* Edit Medicine Modal */}
-        {isEditModalOpen && selectedMedicine && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div 
-              className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fade-in"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">Edit Medicine</h2>
-                  <button 
-                    onClick={() => {
-                      setIsEditModalOpen(false);
-                      setEditErrors({});
-                    }}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {[
-                    { name: 'drug_description', label: 'Drug Description', type: 'text' },
-                    { name: 'brand_name', label: 'Brand Name', type: 'text' },
-                    { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
-                    { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
-                    { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
-                  ].map(field => (
-                    <div key={field.name}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {field.label}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type={field.type}
-                        name={field.name}
-                        value={editMedicine[field.name]}
-                        onChange={handleEditInputChange}
-                        min={field.min}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${
-                          editErrors[field.name] ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      />
-                      {editErrors[field.name] && (
-                        <p className="mt-1 text-sm text-red-600 flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
-                          </svg>
-                          {editErrors[field.name]}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditModalOpen(false);
-                      setEditErrors({});
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveEditedMedicine}
-                    disabled={isSaving}
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition"
-                  >
-                    {isSaving ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </>
-                    ) : 'Save Changes'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </Layout>
-    );
-  };
+        </div>
+      )}
+    </Layout>
+  );
+};
 
 export default Medicines;

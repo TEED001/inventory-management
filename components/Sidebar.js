@@ -4,37 +4,28 @@ Box, ChevronDown, ChevronRight, Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState({});
+  const [activeHover, setActiveHover] = useState(null);
+
+  // Persist expanded state in localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarExpandedItems');
+    if (savedState) {
+      setExpandedItems(JSON.parse(savedState));
+    }
+  }, []);
 
   const toggleItem = (item) => {
-    setExpandedItems(prev => ({
-      ...prev,
-      [item]: !prev[item]
-    }));
-  };
-
-  const handleItemClick = (e, item) => {
-    // Only toggle if clicking the parent item (not a sub-item)
-    const isParentClick = e.currentTarget === e.target.closest('.parent-item');
-    
-    if (item.subItems.length > 0 && isParentClick) {
-      e.preventDefault();
-      if (!isOpen) {
-        toggleSidebar();
-        setTimeout(() => toggleItem(item.title), 100);
-      } else {
-        toggleItem(item.title);
-      }
-    }
-  };
-
-  const handleSubItemClick = (e) => {
-    // Stop propagation to prevent the parent item from handling the click
-    e.stopPropagation();
+    const newState = {
+      ...expandedItems,
+      [item]: !expandedItems[item]
+    };
+    setExpandedItems(newState);
+    localStorage.setItem('sidebarExpandedItems', JSON.stringify(newState));
   };
 
   const menuItems = [
@@ -77,23 +68,25 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     }
   ];
 
-  
+  const isActive = (path) => {
+    if (path === '/') return pathname === path;
+    return pathname.startsWith(path);
+  };
 
   return (
     <nav className={`
       fixed top-0 left-0 h-full z-20 transition-all duration-300 ease-in-out 
-      bg-gradient-to-b from-white to-gray-50 shadow-xl
+      bg-white shadow-xl
       ${isOpen ? 'w-64' : 'w-20'} print:hidden border-r border-gray-200
     `}>
-      
       {/* Sidebar Header */}
       <div className={`
         flex items-center p-4 border-b border-gray-200 
         ${isOpen ? 'justify-between' : 'justify-center'}
         bg-white
       `}>
-        {isOpen && (
-          <div className="flex-1 flex justify-center">
+        {isOpen ? (
+          <div className="flex items-center space-x-3">
             <Image 
               src="/images/logo.png"
               alt="System Logo" 
@@ -102,6 +95,9 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               className="h-10 w-auto transition-opacity duration-300"
               priority
             />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center">
           </div>
         )}
         <button 
@@ -112,27 +108,28 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
-
       {/* Menu Items */}
       <div className="overflow-y-auto h-[calc(100%-68px)] custom-scrollbar">
         <nav className="p-2">
           {menuItems.map((item) => (
             <div key={item.title} className="mb-1">
-              <Link href={item.path} passHref legacyBehavior>
+              {item.subItems.length > 0 ? (
                 <div 
                   className={`
-                    parent-item flex items-center justify-between p-3 mx-1 rounded-lg cursor-pointer 
+                    flex items-center justify-between p-3 mx-1 rounded-lg cursor-pointer 
                     transition-all duration-200
-                    ${pathname === item.path ? 
-                      'bg-blue-600 text-white shadow-md' : 
+                    ${isActive(item.path) ? 
+                      'bg-indigo-50 text-indigo-600' : 
                       'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}
                     ${!isOpen ? 'justify-center px-0 mx-0' : ''}
                   `}
-                  onClick={(e) => handleItemClick(e, item)}
+                  onClick={() => toggleItem(item.title)}
+                  onMouseEnter={() => setActiveHover(item.title)}
+                  onMouseLeave={() => setActiveHover(null)}
                 >
                   <div className="flex items-center">
                     <span className={`
-                      ${pathname === item.path ? 'text-white' : 'text-gray-600'}
+                      ${isActive(item.path) ? 'text-indigo-600' : 'text-gray-500'}
                       transition-colors
                     `}>
                       {item.icon}
@@ -145,7 +142,32 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     </span>
                   )}
                 </div>
-              </Link>
+              ) : (
+                <Link href={item.path} passHref legacyBehavior>
+                  <div 
+                    className={`
+                      flex items-center justify-between p-3 mx-1 rounded-lg cursor-pointer 
+                      transition-all duration-200
+                      ${isActive(item.path) ? 
+                        'bg-indigo-50 text-indigo-600' : 
+                        'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}
+                      ${!isOpen ? 'justify-center px-0 mx-0' : ''}
+                    `}
+                    onMouseEnter={() => setActiveHover(item.title)}
+                    onMouseLeave={() => setActiveHover(null)}
+                  >
+                    <div className="flex items-center">
+                      <span className={`
+                        ${isActive(item.path) ? 'text-indigo-600' : 'text-gray-500'}
+                        transition-colors
+                      `}>
+                        {item.icon}
+                      </span>
+                      {isOpen && <span className="ml-3 font-medium">{item.title}</span>}
+                    </div>
+                  </div>
+                </Link>
+              )}
 
               {isOpen && item.subItems.length > 0 && expandedItems[item.title] && (
                 <div className="ml-8 mt-1 space-y-1 animate-fadeIn">
@@ -155,11 +177,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                         className={`
                           flex items-center p-2 pl-4 rounded-lg cursor-pointer 
                           transition-all duration-200 text-sm
-                          ${pathname === subItem.path ? 
-                            'bg-blue-100 text-blue-600 font-medium' : 
+                          ${isActive(subItem.path) ? 
+                            'bg-indigo-50 text-indigo-600 font-medium' : 
                             'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}
                         `}
-                        onClick={(e) => e.stopPropagation()} // Prevent event from bubbling to parent
                       >
                         {subItem.icon && (
                           <span className="mr-2">
@@ -170,6 +191,22 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                       </a>
                     </Link>
                   ))}
+                </div>
+              )}
+
+              {/* Tooltip for collapsed state */}
+              {!isOpen && activeHover === item.title && (
+                <div className="absolute left-full ml-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-md shadow-lg z-30">
+                  {item.title}
+                  {item.subItems.length > 0 && expandedItems[item.title] && (
+                    <div className="mt-1 space-y-1">
+                      {item.subItems.map(subItem => (
+                        <div key={subItem.title} className="whitespace-nowrap">
+                          {subItem.title}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
