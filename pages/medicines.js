@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { FaTrash, FaEdit, FaPlus, FaDownload, FaPrint, FaSearch, FaQrcode } from "react-icons/fa";
 import Swal from 'sweetalert2';
@@ -45,6 +45,13 @@ const Medicines = () => {
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sort medicines alphabetically by drug description
+  const sortedMedicines = useMemo(() => {
+    return [...medicines].sort((a, b) => 
+      a.drug_description.localeCompare(b.drug_description)
+    );
+  }, [medicines]);
 
   // Fetch medicines
   const fetchMedicines = async () => {
@@ -133,9 +140,7 @@ const Medicines = () => {
       }
       
       const addedMedicine = await response.json();
-      setMedicines(prev => [...prev, addedMedicine].sort((a, b) => 
-        a.drug_description.localeCompare(b.drug_description)
-      ));
+      setMedicines(prev => [...prev, addedMedicine]);
       setNewlyAdded(prev => new Set([...prev, addedMedicine.item_no]));
       setIsModalOpen(false);
       setNewMedicine({
@@ -271,8 +276,8 @@ const Medicines = () => {
     const headers = ['Item No', 'Drug Description', 'Brand Name', 'Batch No', 'Expiry Date', 'Quantity'];
     const csvContent = [
       headers.join(','),
-      ...medicines.map(med => [
-        med.item_no,
+      ...sortedMedicines.map((med, index) => [
+        index + 1, // Display sequential number instead of real ID
         `"${med.drug_description.replace(/"/g, '""')}"`,
         `"${med.brand_name.replace(/"/g, '""')}"`,
         med.lot_batch_no,
@@ -364,7 +369,7 @@ const Medicines = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Item No
+                      #
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Drug Description
@@ -387,14 +392,14 @@ const Medicines = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {medicines.length > 0 ? (
-                    medicines.map(medicine => (
+                  {sortedMedicines.length > 0 ? (
+                    sortedMedicines.map((medicine, index) => (
                       <tr 
                         key={medicine.item_no} 
                         className={`hover:bg-gray-50 ${newlyAdded.has(medicine.item_no) ? 'bg-green-50' : ''}`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {medicine.item_no}
+                          {index + 1}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 font-medium">
                           {medicine.drug_description}
@@ -417,7 +422,7 @@ const Medicines = () => {
                         </td>
                         <td className={`px-6 py-4 text-sm font-medium ${medicine.physical_balance < LOW_STOCK_THRESHOLD ? 'text-yellow-600' : 'text-gray-900'}`}>
                           <div className="flex items-center">
-                            {medicine.physical_balance}
+                            {medicine.physical_balance.toLocaleString()}
                             {medicine.physical_balance < LOW_STOCK_THRESHOLD && (
                               <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                 Low Stock
