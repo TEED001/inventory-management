@@ -42,16 +42,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       subItems: [
         { title: 'Medicine', path: '/medicines', icon: <Pill className="w-4 h-4" /> },
         { title: 'Expired Medicine', path: '/expired-medicines', icon: <Archive className="w-4 h-4" /> },
-        { title: 'Archive', path: '/archive', icon: <Box className="w-4 h-4" /> }
-      ]
-    },
-    {
-      title: 'Reports',
-      icon: <PieChart className="w-5 h-5" />,
-      path: '/reports',
-      subItems: [
-        { title: 'Inventory Report', path: '/reports/inventory', icon: <ClipboardList className="w-4 h-4" /> },
-        { title: 'Monthly Report', path: '/reports/monthly', icon: <PieChart className="w-4 h-4" /> }
+        { title: 'Archived Medicines', path: '/archive', icon: <Box className="w-4 h-4" /> }
       ]
     },
     {
@@ -61,8 +52,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       subItems: []
     },
     {
-      title: 'Calculate Medicine',
-      icon: <Calculator className="w-5 h-5" />,
+      title: 'Monthly Report',
+      icon: <PieChart className="w-5 h-5" />,
       path: '/calculate-medicine',
       subItems: []
     }

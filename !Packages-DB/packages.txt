@@ -8,3 +8,4 @@ npm install bcrypt
 npm install mysql2
 npm install lucide-react
 npm install recharts lucide-react
+npm install react-toastify

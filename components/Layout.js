@@ -33,11 +33,9 @@ const Layout = ({ children }) => {
       'dashboard': 'Dashboard',
       'medicines': 'Medicine Inventory',
       'expired-medicines': 'Expired Medicines',
-      'archive': 'Archive',
+      'archive': 'Archived Medicines',
       'reports': 'Reports',
-      'prescription': 'Prescriptions',
-      'calculate-medicine': 'Medicine Calculator',
-      'settings': 'Settings'
+      'prescription': 'Prescription Management',
     };
     return titles[basePath] || 'Dashboard';
   };

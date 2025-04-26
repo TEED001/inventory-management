@@ -304,7 +304,6 @@ const Medicines = () => {
       <div className="px-6 py-4 bg-white border-b border-gray-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Medicine Inventory</h1>
             <p className="text-sm text-gray-500 mt-1">
               {medicines.length} {medicines.length === 1 ? 'item' : 'items'} in inventory
             </p>
