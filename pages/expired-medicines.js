@@ -1,8 +1,27 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { FaTrash, FaSearch, FaEdit, FaTimes, FaQrcode, FaArchive, FaRedo, FaDownload, FaPrint } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/router';
+
+// Constants for reusable values
+const TABLE_COLUMNS = [
+  { id: 'index', label: '#', className: 'font-medium text-gray-900' },
+  { id: 'drug_description', label: 'Drug Description', className: 'font-medium text-gray-600' },
+  { id: 'brand_name', label: 'Brand', className: 'text-gray-500' },
+  { id: 'lot_batch_no', label: 'Batch No', className: 'text-gray-500' },
+  { id: 'expiry_date', label: 'Expiry Date', className: 'font-medium text-red-600' },
+  { id: 'physical_balance', label: 'Qty', className: 'text-gray-500' },
+  { id: 'status', label: 'Status', className: '' },
+];
+
+const FORM_FIELDS = [
+  { name: 'drug_description', label: 'Drug Description', type: 'text' },
+  { name: 'brand_name', label: 'Brand Name', type: 'text' },
+  { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
+  { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
+  { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
+];
 
 const ExpiredMedicines = () => {
     const [expiredMeds, setExpiredMeds] = useState([]);
@@ -33,7 +52,7 @@ const ExpiredMedicines = () => {
         );
     }, [expiredMeds]);
 
-    const fetchExpiredMedicines = async (page = 1, limit = 10, search = '') => {
+    const fetchExpiredMedicines = useCallback(async (page = 1, limit = 10, search = '') => {
         try {
             setIsLoading(true);
             const response = await fetch(
@@ -47,7 +66,6 @@ const ExpiredMedicines = () => {
                 total: 0,
                 totalPages: 1
             });
-            setIsLoading(false);
         } catch (error) {
             console.error('Error:', error);
             Swal.fire({
@@ -57,9 +75,10 @@ const ExpiredMedicines = () => {
                 confirmButtonColor: '#4f46e5',
             });
             setExpiredMeds([]);
+        } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchExpiredMedicines(
@@ -67,15 +86,15 @@ const ExpiredMedicines = () => {
             pagination.limit, 
             searchQuery
         );
-    }, [pagination.page, pagination.limit, searchQuery]);
+    }, [pagination.page, pagination.limit, searchQuery, fetchExpiredMedicines]);
 
-    const handlePageChange = (newPage) => {
+    const handlePageChange = useCallback((newPage) => {
         if (newPage >= 1 && newPage <= pagination.totalPages) {
             setPagination(prev => ({ ...prev, page: newPage }));
         }
-    };
+    }, [pagination.totalPages]);
 
-    const handleDelete = async (id) => {
+    const handleDelete = useCallback(async (id) => {
         const result = await Swal.fire({
             title: 'Archive Record?',
             text: "This will archive this expired medicine record!",
@@ -95,7 +114,7 @@ const ExpiredMedicines = () => {
                 });
                 
                 if (response.ok) {
-                    setExpiredMeds(expiredMeds.filter(med => med.id !== id));
+                    setExpiredMeds(prev => prev.filter(med => med.id !== id));
                     Swal.fire({
                         title: 'Archived!',
                         text: 'Record has been archived successfully.',
@@ -106,27 +125,20 @@ const ExpiredMedicines = () => {
                     fetchExpiredMedicines();
                 } else {
                     const error = await response.json();
-                    Swal.fire({
-                        title: 'Error',
-                        text: error.error || 'Failed to archive record',
-                        icon: 'error',
-                        confirmButtonColor: '#4f46e5',
-                    });
+                    throw new Error(error.error || 'Failed to archive record');
                 }
             } catch (error) {
                 Swal.fire({
                     title: 'Error',
-                    text: 'Failed to archive record',
+                    text: error.message,
                     icon: 'error',
                     confirmButtonColor: '#4f46e5',
                 });
             }
         }
-    };
+    }, [fetchExpiredMedicines]);
 
-
-
-    const openEditModal = (medicine) => {
+    const openEditModal = useCallback((medicine) => {
         setCurrentMedicine(medicine);
         setFormData({
             drug_description: medicine.drug_description,
@@ -137,17 +149,17 @@ const ExpiredMedicines = () => {
             reason: medicine.reason || ''
         });
         setEditModalOpen(true);
-    };
+    }, []);
 
-    const handleInputChange = (e) => {
+    const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
             [name]: value
         }));
-    };
+    }, []);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
         try {
             const response = await fetch(`/api/expired-medicines`, {
@@ -174,29 +186,24 @@ const ExpiredMedicines = () => {
                 fetchExpiredMedicines();
             } else {
                 const error = await response.json();
-                Swal.fire({
-                    title: 'Error',
-                    text: error.error || 'Failed to update medicine',
-                    icon: 'error',
-                    confirmButtonColor: '#4f46e5',
-                });
+                throw new Error(error.error || 'Failed to update medicine');
             }
         } catch (error) {
             Swal.fire({
                 title: 'Error',
-                text: 'Failed to update medicine',
+                text: error.message,
                 icon: 'error',
                 confirmButtonColor: '#4f46e5',
             });
         }
-    };
+    }, [currentMedicine, formData, fetchExpiredMedicines]);
 
-    const formatDate = (dateString) => {
+    const formatDate = useCallback((dateString) => {
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
         return new Date(dateString).toLocaleDateString(undefined, options);
-    };
+    }, []);
 
-    const exportToCSV = () => {
+    const exportToCSV = useCallback(() => {
         const headers = ['#', 'Drug Description', 'Brand Name', 'Batch No', 'Expiry Date', 'Quantity', 'Status'];
         const csvContent = [
             headers.join(','),
@@ -219,6 +226,202 @@ const ExpiredMedicines = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }, [sortedMedicines]);
+
+    const generateQRCode = useCallback((med) => {
+        Swal.fire({
+            title: 'QR Code',
+            text: 'QR code functionality would be implemented here',
+            imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + 
+                    encodeURIComponent(`Medicine: ${med.drug_description}\nBrand: ${med.brand_name}\nBatch: ${med.lot_batch_no}\nExpiry: ${med.expiry_date}`),
+            imageAlt: 'QR Code',
+            showConfirmButton: true
+        });
+    }, []);
+
+    const renderTableHeader = () => (
+        <thead className="bg-gray-50">
+            <tr>
+                {TABLE_COLUMNS.map(column => (
+                    <th 
+                        key={column.id}
+                        scope="col" 
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                        {column.label}
+                    </th>
+                ))}
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
+                    Actions
+                </th>
+            </tr>
+        </thead>
+    );
+
+    const renderTableRow = (med, index) => (
+        <tr key={med.id} className="hover:bg-gray-50">
+            {TABLE_COLUMNS.map(column => (
+                <td key={`${med.id}-${column.id}`} className={`px-6 py-4 whitespace-nowrap text-sm ${column.className}`}>
+                    {column.id === 'index' ? (pagination.page - 1) * pagination.limit + index + 1 : 
+                     column.id === 'expiry_date' ? formatDate(med.expiry_date) :
+                     column.id === 'physical_balance' ? med.physical_balance.toLocaleString() :
+                     column.id === 'status' ? (
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${med.is_archived ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800'}`}>
+                            {med.is_archived ? 'Archived' : 'Expired'}
+                        </span>
+                     ) : med[column.id]}
+                </td>
+            ))}
+            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium print:hidden">
+                <div className="flex justify-end space-x-3">
+                    <button
+                        onClick={() => openEditModal(med)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                        title="Edit record"
+                    >
+                        <FaEdit className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => handleDelete(med.id)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Archive record"
+                    >
+                        <FaArchive className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => generateQRCode(med)}
+                        className="text-purple-600 hover:text-purple-900"
+                        title="Generate QR Code"
+                    >
+                        <FaQrcode className="h-4 w-4" />
+                    </button>
+                </div>
+            </td>
+        </tr>
+    );
+
+    const renderEmptyState = () => (
+        <tr>
+            <td colSpan={TABLE_COLUMNS.length + 1} className="px-6 py-12 text-center">
+                <div className="flex flex-col items-center justify-center">
+                    <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">
+                        {searchQuery ? 'No matching expired medicines found' : 'No expired medicines in inventory'}
+                    </h3>
+                    <p className="text-sm text-gray-500 max-w-md">
+                        {searchQuery ? 'Try adjusting your search query' : 'All medicines are currently within their expiry dates'}
+                    </p>
+                </div>
+            </td>
+        </tr>
+    );
+
+    const renderPagination = () => {
+        if (pagination.totalPages <= 1) return null;
+        
+        const renderPageNumbers = () => {
+            const pages = [];
+            const maxVisiblePages = 5;
+            let startPage, endPage;
+            
+            if (pagination.totalPages <= maxVisiblePages) {
+                startPage = 1;
+                endPage = pagination.totalPages;
+            } else if (pagination.page <= Math.ceil(maxVisiblePages / 2)) {
+                startPage = 1;
+                endPage = maxVisiblePages;
+            } else if (pagination.page + Math.floor(maxVisiblePages / 2) >= pagination.totalPages) {
+                startPage = pagination.totalPages - maxVisiblePages + 1;
+                endPage = pagination.totalPages;
+            } else {
+                startPage = pagination.page - Math.floor(maxVisiblePages / 2);
+                endPage = pagination.page + Math.floor(maxVisiblePages / 2);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                pages.push(
+                    <button
+                        key={i}
+                        onClick={() => handlePageChange(i)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            pagination.page === i
+                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        }`}
+                    >
+                        {i}
+                    </button>
+                );
+            }
+            
+            return pages;
+        };
+
+        return (
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="flex-1 flex justify-between sm:hidden">
+                    <button
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                        disabled={pagination.page === 1}
+                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                        Previous
+                    </button>
+                    <button
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        disabled={pagination.page === pagination.totalPages}
+                        className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                        Next
+                    </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div></div>
+                    <div>
+                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button
+                                onClick={() => handlePageChange(1)}
+                                disabled={pagination.page === 1}
+                                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                            >
+                                <span className="sr-only">First</span>
+                                «
+                            </button>
+                            <button
+                                onClick={() => handlePageChange(pagination.page - 1)}
+                                disabled={pagination.page === 1}
+                                className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                            >
+                                <span className="sr-only">Previous</span>
+                                ‹
+                            </button>
+                            
+                            {renderPageNumbers()}
+                            
+                            <button
+                                onClick={() => handlePageChange(pagination.page + 1)}
+                                disabled={pagination.page === pagination.totalPages}
+                                className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                            >
+                                <span className="sr-only">Next</span>
+                                ›
+                            </button>
+                            <button
+                                onClick={() => handlePageChange(pagination.totalPages)}
+                                disabled={pagination.page === pagination.totalPages}
+                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                            >
+                                <span className="sr-only">Last</span>
+                                »
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -284,209 +487,17 @@ const ExpiredMedicines = () => {
                         {/* Table */}
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            #
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Drug Description
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Brand
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Batch No
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Expiry Date
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Qty
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
+                                {renderTableHeader()}
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {sortedMedicines.length > 0 ? (
-                                        sortedMedicines.map((med, index) => (
-                                            <tr key={med.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {(pagination.page - 1) * pagination.limit + index + 1}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                                                    {med.drug_description}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-500">
-                                                    {med.brand_name}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-500">
-                                                    {med.lot_batch_no}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-red-600 font-medium">
-                                                    {formatDate(med.expiry_date)}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-500">
-                                                    {med.physical_balance.toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                        ${med.is_archived ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800'}`}>
-                                                        {med.is_archived ? 'Archived' : 'Expired'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium print:hidden">
-                                                    <div className="flex justify-end space-x-3">
-                                                        <button
-                                                            onClick={() => openEditModal(med)}
-                                                            className="text-indigo-600 hover:text-indigo-900"
-                                                            title="Edit record"
-                                                        >
-                                                            <FaEdit className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(med.id)}
-                                                            className="text-red-600 hover:text-red-900"
-                                                            title="Archive record"
-                                                        >
-                                                            <FaArchive className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                Swal.fire({
-                                                                    title: 'QR Code',
-                                                                    text: 'QR code functionality would be implemented here',
-                                                                    imageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + 
-                                                                            encodeURIComponent(`Medicine: ${med.drug_description}\nBrand: ${med.brand_name}\nBatch: ${med.lot_batch_no}\nExpiry: ${med.expiry_date}`),
-                                                                    imageAlt: 'QR Code',
-                                                                    showConfirmButton: true
-                                                                });
-                                                            }}
-                                                            className="text-purple-600 hover:text-purple-900"
-                                                            title="Generate QR Code"
-                                                        >
-                                                            <FaQrcode className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="8" className="px-6 py-12 text-center">
-                                                <div className="flex flex-col items-center justify-center">
-                                                    <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                    </svg>
-                                                    <h3 className="text-lg font-medium text-gray-900 mb-1">
-                                                        {searchQuery ? 'No matching expired medicines found' : 'No expired medicines in inventory'}
-                                                    </h3>
-                                                    <p className="text-sm text-gray-500 max-w-md">
-                                                        {searchQuery ? 'Try adjusting your search query' : 'All medicines are currently within their expiry dates'}
-                                                    </p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
+                                    {sortedMedicines.length > 0 ? 
+                                        sortedMedicines.map(renderTableRow) : 
+                                        renderEmptyState()}
                                 </tbody>
                             </table>
                         </div>
 
                         {/* Pagination */}
-                        {pagination.totalPages > 1 && (
-                            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                                <div className="flex-1 flex justify-between sm:hidden">
-                                    <button
-                                        onClick={() => handlePageChange(pagination.page - 1)}
-                                        disabled={pagination.page === 1}
-                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        Previous
-                                    </button>
-                                    <button
-                                        onClick={() => handlePageChange(pagination.page + 1)}
-                                        disabled={pagination.page === pagination.totalPages}
-                                        className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                    <div>
-                                    </div>
-                                    <div>
-                                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                            <button
-                                                onClick={() => handlePageChange(1)}
-                                                disabled={pagination.page === 1}
-                                                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                                            >
-                                                <span className="sr-only">First</span>
-                                                «
-                                            </button>
-                                            <button
-                                                onClick={() => handlePageChange(pagination.page - 1)}
-                                                disabled={pagination.page === 1}
-                                                className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                                            >
-                                                <span className="sr-only">Previous</span>
-                                                ‹
-                                            </button>
-                                            
-                                            {/* Page numbers */}
-                                            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                                                let pageNum;
-                                                if (pagination.totalPages <= 5) {
-                                                    pageNum = i + 1;
-                                                } else if (pagination.page <= 3) {
-                                                    pageNum = i + 1;
-                                                } else if (pagination.page >= pagination.totalPages - 2) {
-                                                    pageNum = pagination.totalPages - 4 + i;
-                                                } else {
-                                                    pageNum = pagination.page - 2 + i;
-                                                }
-                                                
-                                                return (
-                                                    <button
-                                                        key={pageNum}
-                                                        onClick={() => handlePageChange(pageNum)}
-                                                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                                            pagination.page === pageNum
-                                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        {pageNum}
-                                                    </button>
-                                                );
-                                            })}
-                                            
-                                            <button
-                                                onClick={() => handlePageChange(pagination.page + 1)}
-                                                disabled={pagination.page === pagination.totalPages}
-                                                className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                                            >
-                                                <span className="sr-only">Next</span>
-                                                ›
-                                            </button>
-                                            <button
-                                                onClick={() => handlePageChange(pagination.totalPages)}
-                                                disabled={pagination.page === pagination.totalPages}
-                                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                                            >
-                                                <span className="sr-only">Last</span>
-                                                »
-                                            </button>
-                                        </nav>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        {renderPagination()}
                     </div>
                 )}
             </div>
@@ -518,13 +529,7 @@ const ExpiredMedicines = () => {
                                             </button>
                                         </div>
                                         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-                                            {[
-                                                { name: 'drug_description', label: 'Drug Description', type: 'text' },
-                                                { name: 'brand_name', label: 'Brand Name', type: 'text' },
-                                                { name: 'lot_batch_no', label: 'Batch Number', type: 'text' },
-                                                { name: 'expiry_date', label: 'Expiry Date', type: 'date' },
-                                                { name: 'physical_balance', label: 'Quantity', type: 'number', min: 0 }
-                                            ].map(field => (
+                                            {FORM_FIELDS.map(field => (
                                                 <div key={field.name}>
                                                     <label htmlFor={field.name} className="block text-sm font-medium text-gray-700">
                                                         {field.label}

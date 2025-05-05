@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { FaTrash, FaUndo, FaSearch, FaArchive, FaTimes, FaDownload, FaPrint } from 'react-icons/fa';
 import Swal from 'sweetalert2';
+
+const PAGE_LIMIT = 20;
+const TABS = ['all', 'active', 'expired'];
 
 const Archive = () => {
   const [archivedItems, setArchivedItems] = useState([]);
@@ -10,40 +13,44 @@ const Archive = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: PAGE_LIMIT,
     total: 0,
     totalPages: 1
   });
 
-  // Sort archived items alphabetically by drug description
+  // Memoized sorted items
   const sortedArchivedItems = useMemo(() => {
     return [...archivedItems].sort((a, b) => 
       a.drug_description.localeCompare(b.drug_description)
     );
   }, [archivedItems]);
 
-  const fetchArchivedItems = async (page = 1) => {
+  // Memoized fetch function
+  const fetchArchivedItems = useCallback(async (page = 1) => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/archive?page=${page}&limit=${pagination.limit}&type=${
-          activeTab === 'all' ? '' : activeTab
-        }&search=${searchQuery}&sort=drug_description&order=ASC`
-      );
+      const queryParams = new URLSearchParams({
+        page,
+        limit: pagination.limit,
+        type: activeTab === 'all' ? '' : activeTab,
+        search: searchQuery,
+        sort: 'drug_description',
+        order: 'ASC'
+      });
+
+      const response = await fetch(`/api/archive?${queryParams}`);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch data');
-      }
+      if (!response.ok) throw new Error('Failed to fetch data');
       
       const { data, pagination: paginationData } = await response.json();
       
       setArchivedItems(data || []);
-      setPagination(paginationData || {
+      setPagination(prev => ({
+        ...prev,
+        ...paginationData,
         page,
-        limit: pagination.limit,
-        total: 0,
-        totalPages: 1
-      });
+        limit: pagination.limit
+      }));
       
     } catch (error) {
       console.error('Error:', error);
@@ -57,13 +64,14 @@ const Archive = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTab, searchQuery, pagination.limit]);
 
   useEffect(() => {
     fetchArchivedItems();
-  }, [activeTab, searchQuery]);
+  }, [fetchArchivedItems]);
 
-  const handleRestore = async (id, type) => {
+  // Memoized restore handler
+  const handleRestore = useCallback(async (id, type) => {
     const result = await Swal.fire({
       title: 'Restore Item?',
       text: `This will restore this ${type} medicine back to ${type === 'active' ? 'active inventory' : 'expired list'}`,
@@ -76,48 +84,47 @@ const Archive = () => {
       reverseButtons: true
     });
 
-    if (result.isConfirmed) {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/archive', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            id, 
-            restoreTo: type,
-            restored_by: 'User Name'
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to restore item');
-        }
-        
-        await fetchArchivedItems(pagination.page);
-        Swal.fire({
-          title: 'Restored!',
-          text: data.message || 'Item restored successfully',
-          icon: 'success',
-          timer: 2000,
-          showConfirmButton: false
-        });
-      } catch (error) {
-        console.error('Restore error:', error);
-        Swal.fire({
-          title: 'Error',
-          text: error.message || 'Failed to restore item',
-          icon: 'error',
-          confirmButtonColor: '#4f46e5',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
+    if (!result.isConfirmed) return;
 
-  const handleDelete = async (id) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/archive', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id, 
+          restoreTo: type,
+          restored_by: 'User Name'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error(data.error || 'Failed to restore item');
+      
+      await fetchArchivedItems(pagination.page);
+      Swal.fire({
+        title: 'Restored!',
+        text: data.message || 'Item restored successfully',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error('Restore error:', error);
+      Swal.fire({
+        title: 'Error',
+        text: error.message || 'Failed to restore item',
+        icon: 'error',
+        confirmButtonColor: '#4f46e5',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchArchivedItems, pagination.page]);
+
+  // Memoized delete handler
+  const handleDelete = useCallback(async (id) => {
     const result = await Swal.fire({
       title: 'Delete Permanently?',
       text: "This will permanently remove this record from the archive!",
@@ -130,53 +137,51 @@ const Archive = () => {
       reverseButtons: true
     });
 
-    if (result.isConfirmed) {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/archive?id=${id}`, {
-          method: 'DELETE'
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to delete record');
-        }
-        
-        await fetchArchivedItems(pagination.page);
-        Swal.fire({
-          title: 'Deleted!',
-          text: 'Record has been permanently deleted.',
-          icon: 'success',
-          timer: 2000,
-          showConfirmButton: false
-        });
-      } catch (error) {
-        console.error('Delete error:', error);
-        Swal.fire({
-          title: 'Error',
-          text: error.message || 'Failed to delete record',
-          icon: 'error',
-          confirmButtonColor: '#4f46e5',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
+    if (!result.isConfirmed) return;
 
-  const handlePageChange = (newPage) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/archive?id=${id}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error(data.error || 'Failed to delete record');
+      
+      await fetchArchivedItems(pagination.page);
+      Swal.fire({
+        title: 'Deleted!',
+        text: 'Record has been permanently deleted.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error('Delete error:', error);
+      Swal.fire({
+        title: 'Error',
+        text: error.message || 'Failed to delete record',
+        icon: 'error',
+        confirmButtonColor: '#4f46e5',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchArchivedItems, pagination.page]);
+
+  const handlePageChange = useCallback((newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       fetchArchivedItems(newPage);
     }
-  };
+  }, [fetchArchivedItems, pagination.totalPages]);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
-  };
+  }, []);
 
-  const exportToCSV = () => {
+  const exportToCSV = useCallback(() => {
     const headers = ['#', 'Type', 'Drug Description', 'Brand Name', 'Batch No', 'Expiry Date', 'Quantity', 'Archived On'];
     const csvContent = [
       headers.join(','),
@@ -200,7 +205,46 @@ const Archive = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [sortedArchivedItems, pagination.page, pagination.limit]);
+
+  // Memoized pagination buttons
+  const renderPaginationButtons = useMemo(() => {
+    const buttons = [];
+    const maxButtons = 5;
+    let startPage, endPage;
+
+    if (pagination.totalPages <= maxButtons) {
+      startPage = 1;
+      endPage = pagination.totalPages;
+    } else if (pagination.page <= Math.ceil(maxButtons / 2)) {
+      startPage = 1;
+      endPage = maxButtons;
+    } else if (pagination.page >= pagination.totalPages - Math.floor(maxButtons / 2)) {
+      startPage = pagination.totalPages - maxButtons + 1;
+      endPage = pagination.totalPages;
+    } else {
+      startPage = pagination.page - Math.floor(maxButtons / 2);
+      endPage = pagination.page + Math.floor(maxButtons / 2);
+    }
+
+    for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+      buttons.push(
+        <button
+          key={pageNum}
+          onClick={() => handlePageChange(pageNum)}
+          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+            pagination.page === pageNum
+              ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          {pageNum}
+        </button>
+      );
+    }
+
+    return buttons;
+  }, [pagination.page, pagination.totalPages, handlePageChange]);
 
   return (
     <Layout>
@@ -264,7 +308,7 @@ const Archive = () => {
       <div className="px-6 py-4">
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-6">
-          {['all', 'active', 'expired'].map((tab) => (
+          {TABS.map((tab) => (
             <button
               key={tab}
               className={`px-4 py-2 font-medium text-sm flex items-center ${
@@ -454,33 +498,7 @@ const Archive = () => {
                           ‹
                         </button>
                         
-                        {/* Page numbers */}
-                        {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                          let pageNum;
-                          if (pagination.totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (pagination.page <= 3) {
-                            pageNum = i + 1;
-                          } else if (pagination.page >= pagination.totalPages - 2) {
-                            pageNum = pagination.totalPages - 4 + i;
-                          } else {
-                            pageNum = pagination.page - 2 + i;
-                          }
-                          
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => handlePageChange(pageNum)}
-                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                pagination.page === pageNum
-                                  ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
+                        {renderPaginationButtons}
                         
                         <button
                           onClick={() => handlePageChange(pagination.page + 1)}

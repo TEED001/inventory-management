@@ -1,13 +1,22 @@
 import pool from '@/lib/db';
 
+// Configuration constants
+const DEFAULT_PAGINATION = {
+    page: 1,
+    limit: 50
+};
+const SEARCH_FIELDS = ['brand_name', 'drug_description', 'lot_batch_no'];
+
 export default async function handler(req, res) {
     const connection = await pool.getConnection();
     
     try {
         await connection.beginTransaction();
 
-        // Check for expired medicines on every request
-        await handleExpiredMedicines(connection);
+        // Only check for expired medicines on GET requests to prevent accidental moves
+        if (req.method === 'GET') {
+            await handleExpiredMedicines(connection);
+        }
 
         switch (req.method) {
             case 'GET':
@@ -28,52 +37,76 @@ export default async function handler(req, res) {
         console.error('Database error:', error);
         return res.status(500).json({ 
             error: 'Internal Server Error', 
-            details: error.message 
+            details: error.message,
+            ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
         });
     } finally {
         connection.release();
     }
 }
 
-
-
-// Helper function to handle expired medicines
+// Helper function to handle expired medicines (more conservative version)
 async function handleExpiredMedicines(connection) {
+    // First verify the expired_medicines table exists
+    const [tables] = await connection.query(
+        "SHOW TABLES LIKE 'expired_medicines'"
+    );
+    
+    if (tables.length === 0) {
+        console.log('expired_medicines table does not exist - skipping expiry check');
+        return;
+    }
+
     // Get medicines that expired today or earlier
     const [expired] = await connection.query(
         'SELECT * FROM medicines WHERE expiry_date <= CURDATE()'
     );
     
-    if (expired.length > 0) {
-        // Prepare batch insert
-        const values = expired.map(med => [
-            med.item_no, // This becomes original_item_no in expired_medicines
-            med.drug_description,
-            med.brand_name,
-            med.lot_batch_no,
-            med.expiry_date,
-            med.physical_balance,
-            'Auto-expired'
-        ]);
+    if (expired.length === 0) return;
 
-        // Move to expired_medicines
-        await connection.query(
-            `INSERT INTO expired_medicines 
-            (original_item_no, drug_description, brand_name, 
-             lot_batch_no, expiry_date, physical_balance, reason)
-            VALUES ?`,
-            [values]
-        );
-        
-        // Remove from active medicines
-        await connection.query(
-            'DELETE FROM medicines WHERE item_no IN (?)',
-            [expired.map(med => med.item_no)]
-        );
+    // Verify the structure of expired_medicines table
+    const [columns] = await connection.query(
+        "DESCRIBE expired_medicines"
+    );
+    
+    const requiredColumns = ['original_item_no', 'drug_description', 'brand_name', 
+                           'lot_batch_no', 'expiry_date', 'physical_balance', 'reason'];
+    const columnNames = columns.map(col => col.Field);
+    
+    const missingColumns = requiredColumns.filter(col => !columnNames.includes(col));
+    if (missingColumns.length > 0) {
+        console.error('expired_medicines table missing required columns:', missingColumns);
+        return;
     }
+
+    // Prepare batch insert
+    const values = expired.map(med => [
+        med.item_no,
+        med.drug_description,
+        med.brand_name,
+        med.lot_batch_no,
+        med.expiry_date,
+        med.physical_balance,
+        'Auto-expired'
+    ]);
+
+    // Move to expired_medicines
+    await connection.query(
+        `INSERT INTO expired_medicines 
+        (original_item_no, drug_description, brand_name, 
+         lot_batch_no, expiry_date, physical_balance, reason)
+        VALUES ?`,
+        [values]
+    );
+    
+    // Remove from active medicines
+    await connection.query(
+        'DELETE FROM medicines WHERE item_no IN (?)',
+        [expired.map(med => med.item_no)]
+    );
 }
 
-// GET request handler
+// GET request handler (compatible version)
 async function handleGetRequest(connection, req, res) {
     const searchQuery = req.query.search?.trim() || "";
     const showExpired = req.query.expired === 'true';
@@ -111,7 +144,7 @@ async function handleGetRequest(connection, req, res) {
     return res.status(200).json(rows);
 }
 
-// POST request handler
+// POST request handler (unchanged)
 async function handlePostRequest(connection, req, res) {
     const { drug_description, brand_name, lot_batch_no, expiry_date, physical_balance } = req.body;
 
@@ -154,7 +187,7 @@ async function handlePostRequest(connection, req, res) {
     });
 }
 
-// PUT request handler
+// PUT request handler (unchanged)
 async function handlePutRequest(connection, req, res) {
     const { item_no, drug_description, brand_name, lot_batch_no, expiry_date, physical_balance } = req.body;
 
@@ -190,7 +223,7 @@ async function handlePutRequest(connection, req, res) {
     });
 }
 
-// DELETE request handler
+// DELETE request handler (unchanged)
 async function handleDeleteRequest(connection, req, res) {
     const { item_no, reason = "Manually archived", archived_by = null } = req.body;
 

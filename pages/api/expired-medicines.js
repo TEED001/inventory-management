@@ -1,5 +1,12 @@
 import pool from '@/lib/db';
 
+// Constants for configuration
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 50;
+const VALID_SORT_COLUMNS = new Set(['expiry_date', 'expired_at', 'brand_name', 'drug_description']);
+const DEFAULT_SORT_COLUMN = 'expiry_date';
+const DEFAULT_SORT_ORDER = 'DESC';
+
 export default async function handler(req, res) {
     const connection = await pool.getConnection();
     
@@ -36,54 +43,8 @@ export default async function handler(req, res) {
     }
 }
 
-// NEW FUNCTION: Restore unexpired medicines
-async function handleRestoreUnexpired(connection) {
-    // Get medicines in expired table that are no longer expired
-    const [unexpired] = await connection.query(
-        `SELECT * FROM expired_medicines 
-        WHERE expiry_date > CURDATE() AND is_archived = 0`
-    );
-    
-    if (unexpired.length > 0) {
-        // Move back to medicines table
-        await connection.query(
-            `INSERT INTO medicines 
-            (item_no, drug_description, brand_name, lot_batch_no, expiry_date, physical_balance)
-            VALUES ?`,
-            [unexpired.map(med => [
-                med.original_item_no,
-                med.drug_description,
-                med.brand_name,
-                med.lot_batch_no,
-                med.expiry_date,
-                med.physical_balance
-            ])]
-        );
-        
-        // Remove from expired_medicines
-        await connection.query(
-            'DELETE FROM expired_medicines WHERE id IN (?)',
-            [unexpired.map(med => med.id)]
-        );
-    }
-}
-
-// GET - Retrieve expired medicines (updated to exclude unexpired items)
-async function handleGetExpired(connection, req, res) {
-    const { 
-        page = 1, 
-        limit = 50, 
-        search = '', 
-        archived = '',
-        sort = 'expiry_date',
-        order = 'DESC'
-    } = req.query;
-    
-    const offset = (page - 1) * limit;
-    const validSortColumns = ['expiry_date', 'expired_at', 'brand_name', 'drug_description'];
-    const sortColumn = validSortColumns.includes(sort) ? sort : 'expiry_date';
-    const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-
+// Helper function to build WHERE clause for queries
+function buildWhereClause(search = '', archived = '') {
     let whereClause = 'WHERE expiry_date <= CURDATE()'; // Only show truly expired items
     const params = [];
 
@@ -98,41 +59,95 @@ async function handleGetExpired(connection, req, res) {
         whereClause += ' AND is_archived = 0';
     }
 
-    // Main query with sorting
-    const [rows] = await connection.query(
-        `SELECT 
-            id,
-            original_item_no,
-            drug_description,
-            brand_name,
-            lot_batch_no,
-            expiry_date,
-            physical_balance,
-            reason,
-            expired_at,
-            is_archived,
-            archived_at
-        FROM expired_medicines
-        ${whereClause}
-        ORDER BY ${sortColumn} ${sortOrder}
-        LIMIT ? OFFSET ?`,
-        [...params, Number(limit), Number(offset)]
-    );
+    return { whereClause, params };
+}
 
-    // Count query for pagination
-    const [count] = await connection.query(
-        `SELECT COUNT(*) as total FROM expired_medicines ${whereClause}`,
-        params
+// Restore unexpired medicines
+async function handleRestoreUnexpired(connection) {
+    const [unexpired] = await connection.query(
+        `SELECT * FROM expired_medicines 
+        WHERE expiry_date > CURDATE() AND is_archived = 0`
     );
+    
+    if (unexpired.length === 0) return;
+
+    // Prepare batch insert values
+    const values = unexpired.map(med => [
+        med.original_item_no,
+        med.drug_description,
+        med.brand_name,
+        med.lot_batch_no,
+        med.expiry_date,
+        med.physical_balance
+    ]);
+
+    // Transactionally move back to medicines table
+    await connection.query(
+        `INSERT INTO medicines 
+        (item_no, drug_description, brand_name, lot_batch_no, expiry_date, physical_balance)
+        VALUES ?`,
+        [values]
+    );
+    
+    // Remove from expired_medicines
+    await connection.query(
+        'DELETE FROM expired_medicines WHERE id IN (?)',
+        [unexpired.map(med => med.id)]
+    );
+}
+
+// GET - Retrieve expired medicines
+async function handleGetExpired(connection, req, res) {
+    const { 
+        page = DEFAULT_PAGE, 
+        limit = DEFAULT_LIMIT, 
+        search = '', 
+        archived = '',
+        sort = DEFAULT_SORT_COLUMN,
+        order = DEFAULT_SORT_ORDER
+    } = req.query;
+    
+    const offset = (page - 1) * limit;
+    const sortColumn = VALID_SORT_COLUMNS.has(sort) ? sort : DEFAULT_SORT_COLUMN;
+    const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : DEFAULT_SORT_ORDER;
+
+    const { whereClause, params } = buildWhereClause(search, archived);
+
+    // Execute both queries in parallel for better performance
+    const [rows, [count]] = await Promise.all([
+        connection.query(
+            `SELECT 
+                id,
+                original_item_no,
+                drug_description,
+                brand_name,
+                lot_batch_no,
+                expiry_date,
+                physical_balance,
+                reason,
+                expired_at,
+                is_archived,
+                archived_at
+            FROM expired_medicines
+            ${whereClause}
+            ORDER BY ${connection.escapeId(sortColumn)} ${sortOrder}
+            LIMIT ? OFFSET ?`,
+            [...params, Number(limit), Number(offset)]
+        ),
+        connection.query(
+            `SELECT COUNT(*) as total FROM expired_medicines ${whereClause}`,
+            params
+        )
+    ]);
 
     await connection.commit();
     return res.status(200).json({
-        data: rows,
+        data: rows[0],
         pagination: {
             page: Number(page),
             limit: Number(limit),
-            total: count[0].total,
-            totalPages: Math.ceil(count[0].total / limit)
+            total: count.total,
+            totalPages: Math.ceil(count.total / limit)
         },
         sort: {
             column: sortColumn,
@@ -141,31 +156,27 @@ async function handleGetExpired(connection, req, res) {
     });
 }
 
-// POST - Manually expire a medicine (updated with validation)
+// POST - Manually expire a medicine
 async function handlePostExpired(connection, req, res) {
-    const { item_no, reason = 'Manually expired', archived_by = null } = req.body;
+    const { item_no, reason = 'Manually expired' } = req.body;
     
     if (!item_no) {
         await connection.rollback();
         return res.status(400).json({ error: 'Item No. is required' });
     }
 
-    // Verify medicine exists and lock the row
-    const [medicine] = await connection.query(
-        'SELECT * FROM medicines WHERE item_no = ? FOR UPDATE',
-        [item_no]
-    );
-    
+    // Execute all validation checks in a single transaction
+    const [medicine, [isExpired], [alreadyExpired]] = await Promise.all([
+        connection.query('SELECT * FROM medicines WHERE item_no = ? FOR UPDATE', [item_no]),
+        connection.query('SELECT 1 FROM medicines WHERE item_no = ? AND expiry_date <= CURDATE()', [item_no]),
+        connection.query('SELECT 1 FROM expired_medicines WHERE original_item_no = ? AND is_archived = 0', [item_no])
+    ]);
+
+    // Validate checks
     if (medicine.length === 0) {
         await connection.rollback();
         return res.status(404).json({ error: 'Medicine not found' });
     }
-
-    // Check if expiry date is actually expired
-    const [isExpired] = await connection.query(
-        'SELECT 1 FROM medicines WHERE item_no = ? AND expiry_date <= CURDATE()',
-        [item_no]
-    );
 
     if (isExpired.length === 0) {
         await connection.rollback();
@@ -175,52 +186,36 @@ async function handlePostExpired(connection, req, res) {
         });
     }
 
-    // Check if already expired
-    const [alreadyExpired] = await connection.query(
-        'SELECT 1 FROM expired_medicines WHERE original_item_no = ? AND is_archived = 0',
-        [item_no]
-    );
-
     if (alreadyExpired.length > 0) {
         await connection.rollback();
         return res.status(409).json({ error: 'This medicine is already in the expired list' });
     }
 
-    // Move to expired_medicines
+    const med = medicine[0];
     const [result] = await connection.query(
         `INSERT INTO expired_medicines 
         (original_item_no, drug_description, brand_name, 
          lot_batch_no, expiry_date, physical_balance, reason)
         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-            medicine[0].item_no,
-            medicine[0].drug_description,
-            medicine[0].brand_name,
-            medicine[0].lot_batch_no,
-            medicine[0].expiry_date,
-            medicine[0].physical_balance,
-            reason
-        ]
+        [med.item_no, med.drug_description, med.brand_name, 
+         med.lot_batch_no, med.expiry_date, med.physical_balance, reason]
     );
 
     // Remove from active medicines
-    await connection.query(
-        'DELETE FROM medicines WHERE item_no = ?',
-        [item_no]
-    );
+    await connection.query('DELETE FROM medicines WHERE item_no = ?', [item_no]);
 
     await connection.commit();
     return res.status(201).json({ 
         message: 'Medicine moved to expired list',
         expired_id: result.insertId,
         expired_at: new Date().toISOString(),
-        original_item_no: medicine[0].item_no
+        original_item_no: med.item_no
     });
 }
 
-// PUT - Archive/Unarchive an expired medicine (updated with validation)
+// PUT - Update expired medicine details
 async function handlePutExpired(connection, req, res) {
-    const { id, drug_description, brand_name, lot_batch_no, expiry_date, physical_balance, reason } = req.body;
+    const { id, ...updates } = req.body;
     
     if (!id) {
         await connection.rollback();
@@ -241,40 +236,19 @@ async function handlePutExpired(connection, req, res) {
     // Update medicine details
     await connection.query(
         `UPDATE expired_medicines 
-        SET drug_description = ?, 
-            brand_name = ?, 
-            lot_batch_no = ?, 
-            expiry_date = ?, 
-            physical_balance = ?,
-            reason = ?
+        SET ?
         WHERE id = ?`,
-        [
-            drug_description,
-            brand_name,
-            lot_batch_no,
-            expiry_date,
-            physical_balance,
-            reason,
-            id
-        ]
+        [updates, id]
     );
 
     await connection.commit();
     return res.status(200).json({ 
         message: 'Medicine updated successfully',
-        data: {
-            id,
-            drug_description,
-            brand_name,
-            lot_batch_no,
-            expiry_date,
-            physical_balance,
-            reason
-        }
+        data: { id, ...updates }
     });
 }
 
-// DELETE - Permanently delete an expired medicine (updated with validation)
+// DELETE - Permanently delete an expired medicine
 async function handleDeleteExpired(connection, req, res) {
     const { id } = req.query;
     
@@ -294,8 +268,10 @@ async function handleDeleteExpired(connection, req, res) {
         return res.status(404).json({ error: 'Expired medicine not found' });
     }
 
+    const med = expired[0];
+    
     // Check if medicine should be restored instead of deleted
-    if (new Date(expired[0].expiry_date) > new Date()) {
+    if (new Date(med.expiry_date) > new Date()) {
         await connection.rollback();
         return res.status(400).json({ 
             error: 'Cannot delete medicine',
@@ -303,8 +279,8 @@ async function handleDeleteExpired(connection, req, res) {
         });
     }
 
-    // First archive the record if not already archived
-    if (!expired[0].is_archived) {
+    // Archive the record if not already archived
+    if (!med.is_archived) {
         try {
             await connection.query(
                 `INSERT INTO archived_medicines 
@@ -313,13 +289,13 @@ async function handleDeleteExpired(connection, req, res) {
                  reason, type, archived_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
-                    expired[0].original_item_no,
-                    expired[0].drug_description,
-                    expired[0].brand_name,
-                    expired[0].lot_batch_no,
-                    expired[0].expiry_date,
-                    expired[0].physical_balance,
-                    expired[0].reason || 'Expired',
+                    med.original_item_no,
+                    med.drug_description,
+                    med.brand_name,
+                    med.lot_batch_no,
+                    med.expiry_date,
+                    med.physical_balance,
+                    med.reason || 'Expired',
                     'expired',
                     new Date()
                 ]
@@ -329,25 +305,21 @@ async function handleDeleteExpired(connection, req, res) {
             console.error('Archive failed:', error);
             return res.status(500).json({ 
                 error: 'Failed to archive medicine',
-                details: error.message,
-                suggestion: 'This usually happens when the original medicine record is missing. Please check the original_item_no reference.'
+                details: error.message
             });
         }
     }
 
-    // Then delete from expired_medicines
-    await connection.query(
-        'DELETE FROM expired_medicines WHERE id = ?',
-        [id]
-    );
+    // Delete from expired_medicines
+    await connection.query('DELETE FROM expired_medicines WHERE id = ?', [id]);
 
     await connection.commit();
     return res.status(200).json({ 
         message: 'Expired medicine permanently deleted',
         deleted_item: {
-            id: expired[0].id,
-            original_item_no: expired[0].original_item_no,
-            brand_name: expired[0].brand_name
+            id: med.id,
+            original_item_no: med.original_item_no,
+            brand_name: med.brand_name
         }
     });
 }
