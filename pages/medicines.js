@@ -27,6 +27,7 @@ const Medicines = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [newlyAdded, setNewlyAdded] = useState(new Set());
+  const [qrModalData, setQrModalData] = useState(null);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,6 +97,60 @@ const Medicines = () => {
   useEffect(() => {
     fetchMedicines();
   }, [fetchMedicines]);
+
+  // Generate QR Code URL
+  const generateQRCodeUrl = useCallback((medicine) => {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+      `Medicine: ${medicine.drug_description}\nBrand: ${medicine.brand_name}\nBatch: ${medicine.lot_batch_no}\nExpiry: ${formatDate(medicine.expiry_date)}`
+    )}`;
+  }, [formatDate]);
+
+  // Open QR Code Modal
+  const openQRModal = useCallback((medicine) => {
+    setQrModalData({
+      medicine,
+      qrUrl: generateQRCodeUrl(medicine)
+    });
+  }, [generateQRCodeUrl]);
+
+  // Print QR Code
+  const printQRCode = useCallback(() => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print QR Code</title>
+          <style>
+            body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+            .qr-container { text-align: center; padding: 20px; }
+            .qr-info { margin-top: 20px; font-family: Arial, sans-serif; font-size: 16px; }
+            .qr-info p { margin: 8px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="qr-container">
+            <img src="${qrModalData.qrUrl}" alt="QR Code" />
+            <div class="qr-info">
+              <p><strong>Medicine:</strong> ${qrModalData.medicine.drug_description}</p>
+              <p><strong>Brand:</strong> ${qrModalData.medicine.brand_name}</p>
+              <p><strong>Batch:</strong> ${qrModalData.medicine.lot_batch_no}</p>
+              <p><strong>Expiry:</strong> ${formatDate(qrModalData.medicine.expiry_date)}</p>
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 200);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }, [qrModalData, formatDate]);
 
   // Input handlers
   const handleInputChange = useCallback((e) => {
@@ -385,6 +440,7 @@ const Medicines = () => {
               <FaTrash className="h-4 w-4" />
             </button>
             <button
+              onClick={() => openQRModal(medicine)}
               className="text-purple-600 hover:text-purple-900"
               title="Generate QR Code"
             >
@@ -519,6 +575,59 @@ const Medicines = () => {
     );
   };
 
+  const renderQRModal = () => (
+    <div className="fixed z-50 inset-0 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm sm:w-full">
+          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="sm:flex sm:items-start">
+              <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Medicine QR Code
+                  </h3>
+                  <button
+                    onClick={() => setQrModalData(null)}
+                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-4 flex flex-col items-center">
+                  <img 
+                    src={qrModalData.qrUrl} 
+                    alt="QR Code" 
+                    className="w-48 h-48 border border-gray-200 rounded-lg"
+                  />
+                  <div className="mt-4 text-left w-full">
+                    <p className="text-sm text-gray-500"><strong>Medicine:</strong> {qrModalData.medicine.drug_description}</p>
+                    <p className="text-sm text-gray-500"><strong>Brand:</strong> {qrModalData.medicine.brand_name}</p>
+                    <p className="text-sm text-gray-500"><strong>Batch:</strong> {qrModalData.medicine.lot_batch_no}</p>
+                    <p className="text-sm text-gray-500"><strong>Expiry:</strong> {formatDate(qrModalData.medicine.expiry_date)}</p>
+                  </div>
+                  <button
+                    onClick={printQRCode}
+                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition"
+                  >
+                    <FaPrint className="mr-2 h-4 w-4" />
+                    Print QR Code
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <Layout>
       {/* Header Section */}
@@ -603,6 +712,9 @@ const Medicines = () => {
 
       {/* Edit Medicine Modal */}
       {isEditModalOpen && selectedMedicine && renderModalForm(true)}
+
+      {/* QR Code Modal */}
+      {qrModalData && renderQRModal()}
     </Layout>
   );
 };

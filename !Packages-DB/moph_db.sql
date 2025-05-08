@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 23, 2025 at 09:12 PM
+-- Generation Time: May 08, 2025 at 10:40 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -46,8 +46,17 @@ CREATE TABLE `archived_medicines` (
 --
 
 INSERT INTO `archived_medicines` (`id`, `original_item_no`, `drug_description`, `brand_name`, `lot_batch_no`, `expiry_date`, `physical_balance`, `reason`, `type`, `archived_at`, `archived_by`) VALUES
-(61, 41, 'LUSARTAN', 'test', 'test', '2025-04-26', 1000, 'Manually archived', 'active', '2025-04-24 01:32:30', NULL),
-(75, 36, 'Tambal sa Bato', 'test', 'test', '2025-04-22', 1000, 'Auto-expired', 'expired', '2025-04-24 01:38:57', NULL);
+(129, 89, 'Omeprazole 20mg', 'Losec      ', 'O802     ', '2025-06-07', 200, 'Manually archived', 'active', '2025-05-09 04:38:20', NULL),
+(130, 94, 'Metoprolol 50mg', 'Betaloc    ', 'MT901    ', '2028-12-15', 10000, 'Manually archived', 'active', '2025-05-09 04:38:22', NULL),
+(131, 87, 'Metformin 500mg', 'Glucophage ', 'M177     ', '2025-07-25', 10000, 'Manually archived', 'active', '2025-05-09 04:38:24', NULL),
+(132, 88, 'Losartan 50mg ', 'Cozaar     ', 'L490     ', '2025-09-27', 600, 'Manually archived', 'active', '2025-05-09 04:38:26', NULL),
+(133, 97, 'Loperamide 2mg', 'Imodium    ', 'LPM909   ', '2029-03-09', 10, 'Manually archived', 'active', '2025-05-09 04:38:28', NULL),
+(134, 106, 'Losartan 50mg', 'Cozaar', 'L321', '2024-10-01', 300, 'Auto-expired', 'expired', '2025-05-09 04:38:46', NULL),
+(135, 115, 'Loperamide 2mg', 'Imodium', 'LPM799', '2023-05-05', 250, 'Auto-expired', 'expired', '2025-05-09 04:38:47', NULL),
+(136, 105, 'Metformin 500mg', 'Glucophage', 'M166', '2024-03-31', 120, 'Auto-expired', 'expired', '2025-05-09 04:38:48', NULL),
+(137, 112, 'Metoprolol 50mg', 'Betaloc', 'MT800', '2024-11-11', 980, 'Auto-expired', 'expired', '2025-05-09 04:38:49', NULL),
+(138, 98, 'Paracetamol 500mg', 'Biogesic   ', 'B089     ', '2022-08-13', 10000, 'Auto-expired', 'expired', '2025-05-09 04:38:51', NULL),
+(139, 101, 'Paracetamol 500mg', 'Biogesic', 'B089', '2024-04-10', 150, 'Auto-expired', 'expired', '2025-05-09 04:38:53', NULL);
 
 -- --------------------------------------------------------
 
@@ -74,7 +83,17 @@ CREATE TABLE `expired_medicines` (
 --
 
 INSERT INTO `expired_medicines` (`id`, `original_item_no`, `drug_description`, `brand_name`, `lot_batch_no`, `expiry_date`, `physical_balance`, `reason`, `expired_at`, `is_archived`, `archived_at`) VALUES
-(63, 42, 'test', 'test', 'test', '2025-03-31', 100, 'Restored from archive', '2025-04-23 17:40:12', 0, NULL);
+(99, 99, 'Amoxicillin 500mg ', 'Amoxil     ', 'A198     ', '2022-05-14', 10000, 'Auto-expired', '2025-05-08 20:35:55', 0, NULL),
+(103, 102, 'Amoxicillin 500mg', 'Amoxil', 'A198', '2023-11-01', 220, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(104, 103, 'Ibuprofen 400mg', 'Advil', 'IB101', '2024-08-20', 175, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(105, 104, 'Cetirizine 10mg', 'Virlix', 'C672', '2023-12-12', 340, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(108, 107, 'Omeprazole 20mg', 'Losec', 'O751', '2023-09-15', 500, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(109, 108, 'Amlodipine 5mg', 'Norvasc', 'A601', '2024-12-01', 180, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(110, 109, 'Salbutamol Syrup', 'Ventolin', 'S391', '2024-07-07', 210, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(111, 110, 'Clopidogrel 75mg', 'Plavix', 'CL220', '2023-10-18', 600, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(112, 111, 'Azithromycin 250mg', 'Zithromax', 'AZ142', '2024-05-10', 450, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(114, 113, 'Vitamin C 500mg', 'Cecon', 'VITC03', '2024-01-22', 360, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL),
+(115, 114, 'Ferrous Sulfate 325mg', 'Fer-In-Sol', 'FERR15', '2023-08-30', 400, 'Auto-expired', '2025-05-08 20:36:53', 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -98,7 +117,13 @@ CREATE TABLE `medicines` (
 --
 
 INSERT INTO `medicines` (`item_no`, `drug_description`, `brand_name`, `lot_batch_no`, `expiry_date`, `physical_balance`, `created_at`, `updated_at`) VALUES
-(38, 'Test Bato', 'test', 'test', '2025-04-26', 100, '2025-04-23 17:36:14', '2025-04-23 17:36:14');
+(84, 'Amoxicillin 500mg ', 'Amoxil     ', 'A256     ', '2025-06-07', 1000, '2025-05-08 20:24:13', '2025-05-08 20:24:13'),
+(85, 'Ibuprofen 400mg', 'Advil      ', 'IB333    ', '2025-06-07', 1006, '2025-05-08 20:24:46', '2025-05-08 20:24:46'),
+(86, 'Cetirizine 10mg', 'Virlix     ', 'C984     ', '2025-05-30', 10000, '2025-05-08 20:25:07', '2025-05-08 20:25:07'),
+(90, 'Amlodipine 5mg', 'Norvasc    ', 'A669     ', '2025-06-07', 200, '2025-05-08 20:26:24', '2025-05-08 20:26:24'),
+(92, 'Clopidogrel 75mg', 'Plavix     ', 'CL321    ', '2027-12-17', 95, '2025-05-08 20:26:58', '2025-05-08 20:26:58'),
+(93, 'Azithromycin 250mg', 'Zithromax  ', 'AZ204    ', '2031-09-26', 10000, '2025-05-08 20:27:15', '2025-05-08 20:27:15'),
+(96, 'Ferrous Sulfate 325mg', 'Fer-In-Sol', 'FERR22   ', '2028-10-26', 10000, '2025-05-08 20:28:13', '2025-05-08 20:28:13');
 
 -- --------------------------------------------------------
 
@@ -167,19 +192,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `archived_medicines`
 --
 ALTER TABLE `archived_medicines`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=88;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=140;
 
 --
 -- AUTO_INCREMENT for table `expired_medicines`
 --
 ALTER TABLE `expired_medicines`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=117;
 
 --
 -- AUTO_INCREMENT for table `medicines`
 --
 ALTER TABLE `medicines`
-  MODIFY `item_no` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
+  MODIFY `item_no` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
 
 --
 -- AUTO_INCREMENT for table `users`

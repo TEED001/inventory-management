@@ -1,5 +1,5 @@
 "use client";
-import { Home, PieChart, Pill, ClipboardList, Archive, Box, ChevronDown, Menu, X } from "lucide-react";
+import { Home, PieChart, Pill, ClipboardList, Archive, Box, ChevronDown, Menu, Calculator , X, QrCode } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,6 +19,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       subItems: []
     },
     {
+      title: 'QR Scanner',
+      icon: <QrCode className="w-5 h-5" />,  // Changed from <Home> to <QrCode>
+      path: '/qrscanner',  // Also changed path from '/dashboard' to '/qr-scanner'
+      subItems: []
+    },
+    {
       title: 'Medicine Management',
       icon: <Pill className="w-5 h-5" />,
       path: '/medicine-management',
@@ -35,8 +41,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       subItems: []
     },
     {
-      title: 'Monthly Report',
-      icon: <PieChart className="w-5 h-5" />,
+      title: 'Billing',
+      icon: <Calculator className="w-5 h-5" />,
       path: '/calculate-medicine',
       subItems: []
     }
