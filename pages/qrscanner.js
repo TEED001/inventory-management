@@ -144,18 +144,7 @@ export default function QrScannerPage() {
                       <p className="text-gray-500 text-xs font-medium uppercase tracking-wider">Medicine Name</p>
                       <p className="font-semibold text-gray-900 mt-1">{scanResult.name}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500 text-xs font-medium uppercase tracking-wider">Dosage</p>
-                      <p className="font-semibold text-gray-900 mt-1">{scanResult.dosage}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs font-medium uppercase tracking-wider">Category</p>
-                      <p className="font-semibold text-gray-900 mt-1">{scanResult.category}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs font-medium uppercase tracking-wider">Available Stock</p>
-                      <p className="font-semibold text-gray-900 mt-1">{scanResult.stock} units</p>
-                    </div>
+                    
                   </div>
                 </div>
               </div>

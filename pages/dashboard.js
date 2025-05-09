@@ -65,36 +65,7 @@ const Dashboard = () => {
     },
   ], []);
 
-  // Handlers with useCallback for stable references
-  const handleScan = useCallback(() => {
-    const mockScannedMedicine = {
-      id: 6,
-      name: 'Omeprazole',
-      count: 543,
-      category: 'GI Drug',
-      percentage: 12,
-      lastScanned: new Date().toLocaleDateString(),
-      trend: 'up',
-      trendValue: '12%'
-    };
 
-    setDashboardState(prev => {
-      const updatedPrescriptions = [...prev.mostPrescribed];
-      
-      // Only add if not already present
-      if (!updatedPrescriptions.some(item => item.id === mockScannedMedicine.id)) {
-        updatedPrescriptions.push(mockScannedMedicine);
-        updatedPrescriptions.sort((a, b) => b.count - a.count);
-      }
-      
-      return {
-        ...prev,
-        scannedData: mockScannedMedicine,
-        showScanner: false,
-        mostPrescribed: updatedPrescriptions.slice(0, 5)
-      };
-    });
-  }, []);
 
   const toggleViewMode = useCallback((mode) => {
     setDashboardState(prev => ({ ...prev, viewMode: mode }));
@@ -213,29 +184,7 @@ const Dashboard = () => {
     );
   };
 
-  const ScannerModal = () => (
-    <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-      <div className="h-40 bg-gray-200 mb-4 flex flex-col items-center justify-center rounded-lg">
-        <QrCode className="h-10 w-10 text-gray-400 mb-2" />
-        <p className="text-gray-500">Point your camera at a medicine QR code</p>
-      </div>
-      <div className="flex justify-center space-x-3">
-        <button 
-          onClick={handleScan}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center"
-        >
-          <Info className="h-4 w-4 mr-2" />
-          Simulate Scan
-        </button>
-        <button 
-          onClick={toggleScanner}
-          className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
+
 
   const ScannedDataCard = () => {
     if (!dashboardState.scannedData) return null;
@@ -309,13 +258,7 @@ const Dashboard = () => {
               >
                 <PieChartIcon size={18} />
               </button>
-              <button
-                onClick={toggleScanner}
-                className="flex items-center bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-md transition-colors"
-              >
-                <QrCode size={16} className="mr-2" />
-                Scan
-              </button>
+              
             </div>
           </div>
 
